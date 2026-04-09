@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
-  m_Name: Tables
+  m_Name: Table
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
-  m_GroupName: Tables
-  m_GUID: bc97d77aed38b55468a0a755bf8e4787
+  m_GroupName: Table
+  m_GUID: 8e1966d2d15208042ae01ea0ca180006
   m_SerializeEntries:
-  - m_GUID: 569cec066b7d270498719f41407f0124
-    m_Address: Assets/Tables
+  - m_GUID: 8d6767d50d8e092418e5da0a701ea1f2
+    m_Address: Assets/Generated/Table
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -24,5 +24,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: 5250151032863554d8010daa23fb09d3, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: cd7c11ce79d3ebc40ab8530d46c362fe, type: 2}
-    - {fileID: 11400000, guid: 29bc04213ea786f418924973e0c61800, type: 2}
+    - {fileID: 11400000, guid: e15aaf47f53b4fe468ecc20831aa307d, type: 2}
+    - {fileID: 11400000, guid: 43ec40aca3228ba4299b7c32f01d3bee, type: 2}

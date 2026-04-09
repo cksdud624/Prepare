@@ -4,7 +4,7 @@ using Common.Scene.Parameter;
 using Common.Template;
 using Common.Template.Interface;
 using Cysharp.Threading.Tasks;
-using Table;
+//using Generated.Table;
 using UnityEngine;
 
 namespace Common
@@ -15,21 +15,21 @@ namespace Common
         private readonly List<IFixedUpdateable> _fixedUpdateables = new ();
         
         public SceneLoader SceneLoader { get; private set; }
-        public TableManager TableManager { get; private set; }
+        //public TableManager TableManager { get; private set; }
 
         public void Init() => Load().Forget();
 
         private async UniTask Load()
         {
-            TableManager = InitGlobal<TableManager>();
-            await TableManager.Init();
+            //TableManager = InitGlobal<TableManager>();
+            //await TableManager.Init();
             
             SceneLoader = InitGlobal<SceneLoader>();
             
             //메인으로 바로 넘어가게 => 테스트 코드임
-            var mainParameter = ScriptableObject.CreateInstance<SceneParameterMain>();
-            mainParameter.Init(Instance.TableManager.RecordStage.GetRecord(0101));
-            SceneLoader.LoadScene(GameDefine.SceneType.Main, mainParameter);
+            //var mainParameter = ScriptableObject.CreateInstance<SceneParameterMain>();
+            //mainParameter.Init(Instance.TableManager.RecordStage.GetRecord(0101));
+            //SceneLoader.LoadScene(GameDefine.SceneType.Main, mainParameter);
         }
 
         private T InitGlobal<T>() where T : MonoBehaviour

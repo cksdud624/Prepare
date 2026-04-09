@@ -13,6 +13,7 @@ public static class TableUpdater
     private const string ScriptsDirectory = "Scripts/Generated/Table";
     private const string TableDirectory = ".Table/";
     private const string TableManifestFile = "TableManifest.json";
+    private const string TableManager = "TableManager";
     [MenuItem("Table/Update Table")]
     public static void UpdateTable()
     {
@@ -47,8 +48,10 @@ public static class TableUpdater
             using (MemoryStream ms = new MemoryStream())
             using (BinaryWriter bw = new BinaryWriter(ms))
             {
-                foreach (var line in lines)
-                    bw.Write(line);
+                for (int i = 2; i < lines.Length; i++)
+                {
+                    bw.Write(lines[i]);
+                }
                 tableDataBytes = ms.ToArray();
             }
 
@@ -95,21 +98,175 @@ public static class TableUpdater
                 string tablePath = Path.Combine(Application.dataPath, BytesDirectory, tableName.fileName) + ".bytes";
                 if (File.Exists(tablePath))
                     File.Delete(tablePath);
+                
+                string scriptPath = Path.Combine(Application.dataPath, ScriptsDirectory, tableName.fileName) + ".cs";
+                if (File.Exists(scriptPath))
+                    File.Delete(scriptPath);
             }
         }
         
-        //scriptReference
+        string scriptDirectory = Path.Combine(Application.dataPath, ScriptsDirectory);
+        string tableManager = Path.Combine(Application.dataPath, ScriptsDirectory, TableManager + ".cs");
+        StringBuilder script = new StringBuilder();
+        script.AppendLine("using Cysharp.Threading.Tasks;");
+        script.AppendLine("using UnityEngine;");
+        script.AppendLine();
+        script.AppendLine("namespace Generated.Table");
+        script.AppendLine("{");
+        script.AppendLine($"\tpublic class {TableManager} : MonoBehaviour");
+        script.AppendLine("\t{");
+        foreach (var item in newTableManifest.tables)
+        {
+            script.AppendLine($"\t\tpublic {item.fileName}Record {item.fileName}Record {{get; private set;}}");
+        }
+        script.AppendLine("");
+        script.AppendLine("\t\tpublic async UniTask Init()");
+        script.AppendLine("\t\t{");
+        foreach (var item in newTableManifest.tables)
+        {
+            script.AppendLine($"\t\t\t{item.fileName}Record = new ();");
+            script.AppendLine($"\t\t\tawait {item.fileName}Record.Init();");
+        }
+        script.AppendLine("\t\t}");
+        script.AppendLine("\t}");
+        script.AppendLine("}");
         
-        /*
-         * 1. TableManifest.json을 로드
-         * 
-         * 2. .Table의 모든 테이블들을 모두 가져온다
-         * 3. .Table을 bytes파일로 변환한다.
-         * 4. TableManifest.json에 있는 json 정보들과 .Table의 모든 tsv와 비교한다
-         * 5. TableManifest.json에 없는 테이블들은 추가하고 변경되었으면 변경하고 TableManifest.json에 주회후 데이터가 남아있으면 bytes파일을 삭제한다
-         * 6. 수정, 추가, 삭제된 bytes파일에 맞게 스크립트 디렉토리도 수정, 추가, 삭제한다
-         */
+        if(!Directory.Exists(scriptDirectory))
+            Directory.CreateDirectory(scriptDirectory);
+            
+        File.WriteAllText(tableManager, script.ToString(), Encoding.UTF8);
+        
+        foreach (var reference in scriptReference)
+        {
+            string recordPath = Path.Combine(Application.dataPath, ScriptsDirectory, reference.Key.fileName + "Record.cs");
+            string[] columns = reference.Value[0].Split('\t');
+            string[] types = reference.Value[1].Split('\t');
+            if (columns.Length != types.Length)
+            {
+                Debug.Log($"Column count mismatch {reference.Key.fileName}");
+                return;
+            }
+
+            if (types.Length <= 0)
+            {
+                Debug.Log($"Column does not have ID {reference.Key.fileName}");
+                return;
+            }
+            
+            StringBuilder record = new StringBuilder();
+            record.AppendLine("using System.IO;");
+            record.AppendLine("using System.Collections.Generic;");
+            record.AppendLine("using Cysharp.Threading.Tasks;");
+            record.AppendLine("using UnityEngine;");
+            record.AppendLine("using UnityEngine.AddressableAssets;");
+            record.AppendLine();
+            record.AppendLine("namespace Generated.Table");
+            record.AppendLine("{");
+            record.AppendLine($"\tpublic partial class {reference.Key.fileName}Record");
+            record.AppendLine("\t{");
+            record.AppendLine($"\t\tprivate const string key = \"{"Assets/" + BytesDirectory + "/" + reference.Key.fileName + ".bytes"}\";");
+            record.AppendLine($"\t\tprivate List<{reference.Key.fileName}Data> datas = new();");
+            record.AppendLine($"\t\tprivate Dictionary<{types[0]}, {reference.Key.fileName}Data> datasById = new();");
+            record.AppendLine("\t\tpublic async UniTask Init()");
+            record.AppendLine("\t\t{");
+            record.AppendLine("\t\t\tvar asset = await Addressables.LoadAssetAsync<TextAsset>(key).ToUniTask();");
+            record.AppendLine("\t\t\tif(asset == null)");
+            record.AppendLine("\t\t\t\tthrow new System.OperationCanceledException($\"Load failed: {key}\");");
+            record.AppendLine("\t\t\tusing (MemoryStream ms = new MemoryStream(asset.bytes))");
+            record.AppendLine("\t\t\tusing (BinaryReader reader = new BinaryReader(ms))");
+            record.AppendLine("\t\t\t{");
+            record.AppendLine("\t\t\t\twhile (reader.BaseStream.Position < reader.BaseStream.Length)");
+            record.AppendLine("\t\t\t\t{");
+            record.AppendLine($"\t\t\t\t\t{reference.Key.fileName}Data data = new (reader);");
+            record.AppendLine("\t\t\t\t\tdatas.Add(data);");
+            record.AppendLine($"\t\t\t\t\tdatasById.Add(data.{columns[0]}, data);");
+            record.AppendLine("\t\t\t\t}");
+            record.AppendLine("\t\t\t}");
+            record.AppendLine("\t\t}");
+
+            record.AppendLine($"\t\tpublic {reference.Key.fileName}Data GetRecord({types[0]} {columns[0].ToLower()})");
+            record.AppendLine("\t\t{");
+            record.AppendLine($"\t\t\tdatasById.TryGetValue({columns[0].ToLower()}, out var record);");
+            record.AppendLine("\t\t\treturn record;");
+            record.AppendLine("\t\t}");
+            
+            record.AppendLine($"\t\tpublic List<{reference.Key.fileName}Data> GetAllRecord()");
+            record.AppendLine("\t\t{");
+            record.AppendLine("\t\t\treturn datas;");
+            record.AppendLine("\t\t}");
+            
+            record.AppendLine("\t}");
+            record.AppendLine("");
+            record.AppendLine($"\tpublic class {reference.Key.fileName}Data");
+            record.AppendLine("\t{");
+            for (int i = 0; i < columns.Length; i++)
+                record.AppendLine($"\t\tpublic {types[i]} {columns[i]} {{get; private set;}}");
+            record.AppendLine("");
+            record.AppendLine($"\t\tpublic {reference.Key.fileName}Data(BinaryReader reader)");
+            record.AppendLine("\t\t{");
+            record.AppendLine("\t\t\tstring[] tableDatas = reader.ReadString().Split('\t');");
+            
+            for (int i = 0; i < columns.Length; i++)
+            {
+                if (types[i].Contains("List"))
+                {
+                    
+                    string type = types[i].Replace("List<", "");
+                    type = type.Replace(">", "");
+                    record.AppendLine($"\t\t\t{columns[i]} = new ();");
+                    record.AppendLine($"\t\t\tstring[] items{i} = tableDatas[{i}].Split(',');");
+                    record.AppendLine($"\t\t\tforeach (var item in items{i})");
+                    record.AppendLine("\t\t\t{");
+                    record.AppendLine($"\t\t\t\t{columns[i]}.Add({GetParseType(type, "item", i)});");
+                    record.AppendLine("\t\t\t}");
+                    
+                }
+                else if (types[i].Contains("Vector3"))
+                {
+                    record.AppendLine($"\t\t\tstring[] items{i} = tableDatas[{i}].Split(',');");
+                    record.AppendLine($"\t\t\tif (items{i}.Length == 3)");
+                    record.AppendLine("\t\t\t{");
+                    record.AppendLine($"\t\t\t\tfloat.TryParse(items{i}[0], out float resultX{i});");
+                    record.AppendLine($"\t\t\t\tfloat.TryParse(items{i}[1], out float resultY{i});");
+                    record.AppendLine($"\t\t\t\tfloat.TryParse(items{i}[2], out float resultZ{i});");
+                    record.AppendLine($"\t\t\t\t{columns[i]} = new Vector3(resultX{i}, resultY{i}, resultZ{i});");
+                    record.AppendLine("\t\t\t}");
+                    record.AppendLine("\t\t\telse");
+                    record.AppendLine("\t\t\t{");
+                    record.AppendLine($"\t\t\t\t{columns[i]} = Vector3.zero;");
+                    record.AppendLine($"\t\t\t\tDebug.LogWarning({columns[i]} + \"is not Vector3\");");
+                    record.AppendLine("\t\t\t}");
+                }
+                else
+                    record.AppendLine($"\t\t\t{columns[i]} = {GetParseType(types[i], $"tableDatas[{i}]", i)};");
+            }
+            record.AppendLine("\t\t}");
+            record.AppendLine("\t}");
+            record.AppendLine("}");
+            File.WriteAllText(recordPath, record.ToString(), Encoding.UTF8);
+        }
+        
         AssetDatabase.Refresh();
+    }
+
+    private static string GetParseType(string type, string valueName, int index)
+    {
+        switch (type.ToLower())
+        {
+            case "long":
+                return $"long.TryParse({valueName}, out long vLong{index}) ? vLong{index} : 0L";
+            case "int":
+                return $"int.TryParse({valueName}, out int vInt{index}) ? vInt{index} : 0";
+            case "float":
+                return $"float.TryParse({valueName}, out float vFloat{index}) ? vFloat{index} : 0f";
+            case "bool":
+                return $"bool.TryParse({valueName}, out bool vBool{index}) ? vBool{index} : false";
+            case "double":
+                return $"double.TryParse({valueName}, out double vDouble{index}) ? vDouble{index} : 0.0";
+            case "string":
+                return valueName;
+        }
+        return $"{type}.Parse({valueName})";
     }
 
     private static void CreateTable(string tableName, byte[] byteDatas)

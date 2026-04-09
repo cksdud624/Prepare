@@ -1,2 +1,3 @@
-Id	Stage	SpawnX	SpawnY	SpawnZ
-010101	0101	0	0	0
+Id	Stage	SpawnPos
+long	long	Vector3
+010101	0101	0;0;0
