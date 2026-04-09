@@ -1,7 +1,7 @@
 using Common.Scene.Parameter;
 using InGame.Model;
 using InGame.Object;
-//using Generated.Table;
+using Generated.Table;
 using UnityEngine;
 
 namespace InGame
@@ -14,7 +14,7 @@ namespace InGame
          */
         [SerializeField] private StageScenarioPlayer scenarioPlayer;
         [SerializeField] private ObjectSpawner objectSpawner;
-        //private StageData _stageData;
+        private StageData _stageData;
         public void Init(InGameModel inGameModel)
         {
             scenarioPlayer.Init(inGameModel);

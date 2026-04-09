@@ -11,6 +11,7 @@ namespace Generated.Table
 		private const string Key = "Assets/Generated/Table/ActorSpawn.bytes";
 		private List<ActorSpawnData> datas = new();
 		private Dictionary<long, ActorSpawnData> datasById = new();
+		partial void InitCustomRecord();
 		public async UniTask Init()
 		{
 			var asset = await Addressables.LoadAssetAsync<TextAsset>(Key).ToUniTask();
@@ -26,6 +27,7 @@ namespace Generated.Table
 					datasById.Add(data.Id, data);
 				}
 			}
+			InitCustomRecord();
 		}
 		public ActorSpawnData GetRecord(long id)
 		{
@@ -51,7 +53,7 @@ namespace Generated.Table
 			Id = long.TryParse(tableDatas[0], out long vLong0) ? vLong0 : 0L;
 			ActorSpawnGroup = long.TryParse(tableDatas[1], out long vLong1) ? vLong1 : 0L;
 			Actor = long.TryParse(tableDatas[2], out long vLong2) ? vLong2 : 0L;
-			string[] items3 = tableDatas[3].Split(',');
+			string[] items3 = tableDatas[3].Split(';');
 			if (items3.Length == 3)
 			{
 				float.TryParse(items3[0], out float resultX3);
@@ -62,7 +64,7 @@ namespace Generated.Table
 			else
 			{
 				SpawnPos = Vector3.zero;
-				Debug.LogWarning(SpawnPos + "is not Vector3");
+				Debug.LogError(SpawnPos + "is not Vector3");
 			}
 		}
 	}

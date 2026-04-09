@@ -11,6 +11,7 @@ namespace Generated.Table
 		private const string Key = "Assets/Generated/Table/StageScenario.bytes";
 		private List<StageScenarioData> datas = new();
 		private Dictionary<long, StageScenarioData> datasById = new();
+		partial void InitCustomRecord();
 		public async UniTask Init()
 		{
 			var asset = await Addressables.LoadAssetAsync<TextAsset>(Key).ToUniTask();
@@ -26,6 +27,7 @@ namespace Generated.Table
 					datasById.Add(data.Id, data);
 				}
 			}
+			InitCustomRecord();
 		}
 		public StageScenarioData GetRecord(long id)
 		{

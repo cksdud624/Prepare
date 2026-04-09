@@ -167,6 +167,7 @@ public static class TableUpdater
             record.AppendLine($"\t\tprivate const string Key = \"{"Assets/" + BytesDirectory + "/" + reference.Key.fileName + ".bytes"}\";");
             record.AppendLine($"\t\tprivate List<{reference.Key.fileName}Data> datas = new();");
             record.AppendLine($"\t\tprivate Dictionary<{types[0]}, {reference.Key.fileName}Data> datasById = new();");
+            record.AppendLine("\t\tpartial void InitCustomRecord();");
             record.AppendLine("\t\tpublic async UniTask Init()");
             record.AppendLine("\t\t{");
             record.AppendLine("\t\t\tvar asset = await Addressables.LoadAssetAsync<TextAsset>(Key).ToUniTask();");
@@ -182,6 +183,7 @@ public static class TableUpdater
             record.AppendLine($"\t\t\t\t\tdatasById.Add(data.{columns[0]}, data);");
             record.AppendLine("\t\t\t\t}");
             record.AppendLine("\t\t\t}");
+            record.AppendLine("\t\t\tInitCustomRecord();");
             record.AppendLine("\t\t}");
 
             record.AppendLine($"\t\tpublic {reference.Key.fileName}Data GetRecord({types[0]} {columns[0].ToLower()})");
@@ -223,7 +225,7 @@ public static class TableUpdater
                 }
                 else if (types[i].Contains("Vector3"))
                 {
-                    record.AppendLine($"\t\t\tstring[] items{i} = tableDatas[{i}].Split(',');");
+                    record.AppendLine($"\t\t\tstring[] items{i} = tableDatas[{i}].Split(';');");
                     record.AppendLine($"\t\t\tif (items{i}.Length == 3)");
                     record.AppendLine("\t\t\t{");
                     record.AppendLine($"\t\t\t\tfloat.TryParse(items{i}[0], out float resultX{i});");
@@ -234,7 +236,7 @@ public static class TableUpdater
                     record.AppendLine("\t\t\telse");
                     record.AppendLine("\t\t\t{");
                     record.AppendLine($"\t\t\t\t{columns[i]} = Vector3.zero;");
-                    record.AppendLine($"\t\t\t\tDebug.LogWarning({columns[i]} + \"is not Vector3\");");
+                    record.AppendLine($"\t\t\t\tDebug.LogError({columns[i]} + \"is not Vector3\");");
                     record.AppendLine("\t\t\t}");
                 }
                 else

@@ -1,4 +1,4 @@
-//using Generated.Table;
+using Generated.Table;
 using UnityEngine;
 
 namespace Common.Scene.Parameter
@@ -6,11 +6,11 @@ namespace Common.Scene.Parameter
     [CreateAssetMenu(fileName = "SceneParameterMain", menuName = "Scriptable Objects/SceneParameterMain")]
     public class SceneParameterMain : ScriptableObject
     {
-        //public StageData StageData { get; set; }
+        public StageData StageData { get; private set; }
 
-        //public void Init(StageData stageData)
-        //{
-            //StageData = stageData;
-        //}
+        public void Init(StageData stageData)
+        {
+            StageData = stageData;
+        }
     }
 }
