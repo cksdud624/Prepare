@@ -164,14 +164,14 @@ public static class TableUpdater
             record.AppendLine("{");
             record.AppendLine($"\tpublic partial class {reference.Key.fileName}Record");
             record.AppendLine("\t{");
-            record.AppendLine($"\t\tprivate const string key = \"{"Assets/" + BytesDirectory + "/" + reference.Key.fileName + ".bytes"}\";");
+            record.AppendLine($"\t\tprivate const string Key = \"{"Assets/" + BytesDirectory + "/" + reference.Key.fileName + ".bytes"}\";");
             record.AppendLine($"\t\tprivate List<{reference.Key.fileName}Data> datas = new();");
             record.AppendLine($"\t\tprivate Dictionary<{types[0]}, {reference.Key.fileName}Data> datasById = new();");
             record.AppendLine("\t\tpublic async UniTask Init()");
             record.AppendLine("\t\t{");
-            record.AppendLine("\t\t\tvar asset = await Addressables.LoadAssetAsync<TextAsset>(key).ToUniTask();");
+            record.AppendLine("\t\t\tvar asset = await Addressables.LoadAssetAsync<TextAsset>(Key).ToUniTask();");
             record.AppendLine("\t\t\tif(asset == null)");
-            record.AppendLine("\t\t\t\tthrow new System.OperationCanceledException($\"Load failed: {key}\");");
+            record.AppendLine("\t\t\t\tthrow new System.OperationCanceledException($\"Load failed: {Key}\");");
             record.AppendLine("\t\t\tusing (MemoryStream ms = new MemoryStream(asset.bytes))");
             record.AppendLine("\t\t\tusing (BinaryReader reader = new BinaryReader(ms))");
             record.AppendLine("\t\t\t{");

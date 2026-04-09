@@ -8,14 +8,14 @@ namespace Generated.Table
 {
 	public partial class StageScenarioRecord
 	{
-		private const string key = "Assets/Generated/Table/StageScenario.bytes";
+		private const string Key = "Assets/Generated/Table/StageScenario.bytes";
 		private List<StageScenarioData> datas = new();
 		private Dictionary<long, StageScenarioData> datasById = new();
 		public async UniTask Init()
 		{
-			var asset = await Addressables.LoadAssetAsync<TextAsset>(key).ToUniTask();
+			var asset = await Addressables.LoadAssetAsync<TextAsset>(Key).ToUniTask();
 			if(asset == null)
-				throw new System.OperationCanceledException($"Load failed: {key}");
+				throw new System.OperationCanceledException($"Load failed: {Key}");
 			using (MemoryStream ms = new MemoryStream(asset.bytes))
 			using (BinaryReader reader = new BinaryReader(ms))
 			{
