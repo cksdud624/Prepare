@@ -6,11 +6,11 @@ using UnityEngine.AddressableAssets;
 
 namespace Generated.Table
 {
-	public partial class PlayerSpawnRecord
+	public partial class CharacterRecord
 	{
-		private const string Key = "Assets/Generated/Table/PlayerSpawn.bytes";
-		private List<PlayerSpawnData> datas = new();
-		private Dictionary<long, PlayerSpawnData> datasById = new();
+		private const string Key = "Assets/Generated/Table/Character.bytes";
+		private List<CharacterData> datas = new();
+		private Dictionary<long, CharacterData> datasById = new();
 		partial void InitCustomRecord();
 		public async UniTask Init()
 		{
@@ -22,45 +22,40 @@ namespace Generated.Table
 			{
 				while (reader.BaseStream.Position < reader.BaseStream.Length)
 				{
-					PlayerSpawnData data = new (reader);
+					CharacterData data = new (reader);
 					datas.Add(data);
 					datasById.Add(data.Id, data);
 				}
 			}
 			InitCustomRecord();
 		}
-		public PlayerSpawnData GetRecord(long id)
+		public CharacterData GetRecord(long id)
 		{
 			datasById.TryGetValue(id, out var record);
 			return record;
 		}
-		public List<PlayerSpawnData> GetAllRecord()
+		public List<CharacterData> GetAllRecord()
 		{
 			return datas;
 		}
 	}
 
-	public class PlayerSpawnData
+	public class CharacterData
 	{
 		public long Id {get; private set;}
-		public Vector3 SpawnPos {get; private set;}
+		public string Name {get; private set;}
+		public List<long> AnimatorId {get; private set;}
 
-		public PlayerSpawnData(BinaryReader reader)
+		public CharacterData(BinaryReader reader)
 		{
 			string[] tableDatas = reader.ReadString().Split('	');
 			Id = long.TryParse(tableDatas[0], out long vLong0) ? vLong0 : 0L;
-			string[] items1 = tableDatas[1].Split(';');
-			if (items1.Length == 3)
+			Name = tableDatas[1];
+			AnimatorId = new ();
+			string[] items2 = tableDatas[2].Split(',');
+			foreach (var item in items2)
 			{
-				float.TryParse(items1[0], out float resultX1);
-				float.TryParse(items1[1], out float resultY1);
-				float.TryParse(items1[2], out float resultZ1);
-				SpawnPos = new Vector3(resultX1, resultY1, resultZ1);
-			}
-			else
-			{
-				SpawnPos = Vector3.zero;
-				Debug.LogError(SpawnPos + "is not Vector3");
+				AnimatorId.Add(long.TryParse(item, out long vLong2) ? vLong2 : 0L);
 			}
 		}
 	}

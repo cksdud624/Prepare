@@ -6,11 +6,11 @@ using UnityEngine.AddressableAssets;
 
 namespace Generated.Table
 {
-	public partial class ActorSpawnRecord
+	public partial class CharacterSpawnRecord
 	{
-		private const string Key = "Assets/Generated/Table/ActorSpawn.bytes";
-		private List<ActorSpawnData> datas = new();
-		private Dictionary<long, ActorSpawnData> datasById = new();
+		private const string Key = "Assets/Generated/Table/CharacterSpawn.bytes";
+		private List<CharacterSpawnData> datas = new();
+		private Dictionary<long, CharacterSpawnData> datasById = new();
 		partial void InitCustomRecord();
 		public async UniTask Init()
 		{
@@ -22,37 +22,37 @@ namespace Generated.Table
 			{
 				while (reader.BaseStream.Position < reader.BaseStream.Length)
 				{
-					ActorSpawnData data = new (reader);
+					CharacterSpawnData data = new (reader);
 					datas.Add(data);
 					datasById.Add(data.Id, data);
 				}
 			}
 			InitCustomRecord();
 		}
-		public ActorSpawnData GetRecord(long id)
+		public CharacterSpawnData GetRecord(long id)
 		{
 			datasById.TryGetValue(id, out var record);
 			return record;
 		}
-		public List<ActorSpawnData> GetAllRecord()
+		public List<CharacterSpawnData> GetAllRecord()
 		{
 			return datas;
 		}
 	}
 
-	public class ActorSpawnData
+	public class CharacterSpawnData
 	{
 		public long Id {get; private set;}
-		public long ActorSpawnGroup {get; private set;}
-		public long Actor {get; private set;}
+		public long CharacterSpawnGroup {get; private set;}
+		public long Character {get; private set;}
 		public Vector3 SpawnPos {get; private set;}
 
-		public ActorSpawnData(BinaryReader reader)
+		public CharacterSpawnData(BinaryReader reader)
 		{
 			string[] tableDatas = reader.ReadString().Split('	');
 			Id = long.TryParse(tableDatas[0], out long vLong0) ? vLong0 : 0L;
-			ActorSpawnGroup = long.TryParse(tableDatas[1], out long vLong1) ? vLong1 : 0L;
-			Actor = long.TryParse(tableDatas[2], out long vLong2) ? vLong2 : 0L;
+			CharacterSpawnGroup = long.TryParse(tableDatas[1], out long vLong1) ? vLong1 : 0L;
+			Character = long.TryParse(tableDatas[2], out long vLong2) ? vLong2 : 0L;
 			string[] items3 = tableDatas[3].Split(';');
 			if (items3.Length == 3)
 			{

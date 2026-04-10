@@ -3,7 +3,7 @@ using UnityEngine.AddressableAssets;
 
 namespace InGame.Object
 {
-    public class ActorBase : ObjectBase
+    public class CharacterBase : ObjectBase
     {
         [SerializeField] protected Animator animator;
         protected GameObject Model;

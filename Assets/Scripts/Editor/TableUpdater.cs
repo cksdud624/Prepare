@@ -247,7 +247,10 @@ public static class TableUpdater
             record.AppendLine("}");
             File.WriteAllText(recordPath, record.ToString(), Encoding.UTF8);
         }
-        
+
+        string json = JsonUtility.ToJson(newTableManifest, true);
+        string jsonPath = Path.Combine(tableDirectoryPath, TableManifestFile);
+        File.WriteAllText(jsonPath, json);
         AssetDatabase.Refresh();
     }
 

@@ -17,8 +17,8 @@ namespace InGame
         private StageData _stageData;
         public void Init(InGameModel inGameModel)
         {
-            scenarioPlayer.Init(inGameModel);
             objectSpawner.Init(inGameModel);
+            scenarioPlayer.Init(inGameModel);
         }
     }
 }

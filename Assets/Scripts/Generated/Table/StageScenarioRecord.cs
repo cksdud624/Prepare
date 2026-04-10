@@ -44,19 +44,18 @@ namespace Generated.Table
 	{
 		public long Id {get; private set;}
 		public long Stage {get; private set;}
-		public List<long> ActorSpawnGroup {get; private set;}
+		public int ScenarioType {get; private set;}
+		public int ScenarioBranch {get; private set;}
+		public long PlayerSpawn {get; private set;}
 
 		public StageScenarioData(BinaryReader reader)
 		{
 			string[] tableDatas = reader.ReadString().Split('	');
 			Id = long.TryParse(tableDatas[0], out long vLong0) ? vLong0 : 0L;
 			Stage = long.TryParse(tableDatas[1], out long vLong1) ? vLong1 : 0L;
-			ActorSpawnGroup = new ();
-			string[] items2 = tableDatas[2].Split(',');
-			foreach (var item in items2)
-			{
-				ActorSpawnGroup.Add(long.TryParse(item, out long vLong2) ? vLong2 : 0L);
-			}
+			ScenarioType = int.TryParse(tableDatas[2], out int vInt2) ? vInt2 : 0;
+			ScenarioBranch = int.TryParse(tableDatas[3], out int vInt3) ? vInt3 : 0;
+			PlayerSpawn = long.TryParse(tableDatas[4], out long vLong4) ? vLong4 : 0L;
 		}
 	}
 }
