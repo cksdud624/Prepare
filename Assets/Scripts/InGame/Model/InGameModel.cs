@@ -7,18 +7,22 @@ namespace InGame.Model
 {
     public class InGameModel
     {
-        public StageData StageData { get; private set; }
-
+        #region Events
         public Action<PlayerSpawnData> OnSpawnPlayer { get; set; }
-
         public Action<List<CharacterSpawnData>> OnSpawnCharacters { get; set; }
-        /*
-         * 1. 플레이어 스폰
-         * 2. 캐릭터 스폰
-         */
+        #endregion
+        
+        #region Models
+        public InGameObjectModel InGameObject { get; private set; }
+        #endregion
+        
+        #region Variables
+        public StageData StageData { get; private set; }
+        #endregion
 
         public InGameModel(SceneParameterMain sceneParameterMain)
         {
+            InGameObject = new ();
             StageData = sceneParameterMain.StageData;
         }
 

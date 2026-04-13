@@ -7,24 +7,31 @@ namespace InGame.Object
 {
     public class ObjectSpawner : MonoBehaviour
     {
-        protected readonly List<ObjectBase> objects = new ();
-        protected readonly List<CharacterBase> characters = new ();
-        
+        [SerializeField] private ObjectBase objectPrefab;
+        [SerializeField] private CharacterBase characterPrefab;
+        private InGameModel _inGameModel;
         
         public void Init(InGameModel inGameModel)
         {
-            inGameModel.OnSpawnPlayer += SpawnPlayer;
-            inGameModel.OnSpawnCharacters += SpawnCharacters;
+            _inGameModel = inGameModel;
+            _inGameModel.OnSpawnPlayer += SpawnPlayer;
+            _inGameModel.OnSpawnCharacters += SpawnCharacters;
         }
 
         private void SpawnPlayer(PlayerSpawnData playerSpawnData)
         {
-            Debug.Log(playerSpawnData.SpawnPos);
+            var player = Instantiate(characterPrefab, playerSpawnData.SpawnPos, Quaternion.identity);
+            player.Init(_inGameModel, true);
         }
 
         private void SpawnCharacters(List<CharacterSpawnData> characterSpawnDatas)
         {
             throw new System.NotImplementedException("캐릭터 스폰");
+        }
+
+        private void SpawnObjects()
+        {
+            throw new System.NotImplementedException("오브젝트 스폰");
         }
     }
 }

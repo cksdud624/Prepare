@@ -9,5 +9,13 @@ namespace Common
             BootStrap = 0,
             Main = 1
         }
+
+        public enum ObjectState
+        {
+            None,
+            Ready,
+            Playing,
+            Error
+        }
     }
 }

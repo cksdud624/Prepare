@@ -16,6 +16,7 @@ namespace Common
         
         public SceneLoader SceneLoader { get; private set; }
         public TableManager TableManager { get; private set; }
+        public AssetManager AssetManager { get; private set; }
 
         public void Init() => Load().Forget();
 
@@ -23,8 +24,8 @@ namespace Common
         {
             TableManager = InitGlobal<TableManager>();
             await TableManager.Init();
-            
             SceneLoader = InitGlobal<SceneLoader>();
+            AssetManager = InitGlobal<AssetManager>();
             
             //메인으로 바로 넘어가게 => 테스트 코드임
             var mainParameter = ScriptableObject.CreateInstance<SceneParameterMain>();
