@@ -15,7 +15,7 @@ namespace InGame.Object
             this.isPlayer = isPlayer;
             inGameModel = model;
             AddObject();
-            LoadAsset();
+            AddParts();
             State = ObjectState.Ready;
         }
 
@@ -30,14 +30,16 @@ namespace InGame.Object
         }
         #endregion
         
-        #region Asset Management
-        protected virtual void LoadAsset()
+        #region Components
+        protected virtual void AddParts()
         {
         }
         #endregion
 
         public ObjectState State { get; private set; }
-        public GameObject Model { get; protected set; }
+        protected GameObject Model { get; set; }
+        protected Rigidbody Rigidbody { get; set; }
+        protected Collider Collider { get; set; }
         protected bool isPlayer;
     }
 }

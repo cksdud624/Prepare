@@ -50,7 +50,7 @@ namespace Common
             Model
         }
 
-        private const string Model = "Assets/AddressableAssets/Model/";
+        private const string Model = "Assets/AddressableAssets/Prefab/Model/";
 
         public static string GetAddressableKey(LoadTarget target, long id)
         {
@@ -58,7 +58,7 @@ namespace Common
             switch (target)
             {
                 case  LoadTarget.Model:
-                    key = Model + id + ".fbx";
+                    key = Model + id + ".prefab";
                     break;
                 default:
                     key = string.Empty;

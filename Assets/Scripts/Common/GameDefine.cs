@@ -17,5 +17,10 @@ namespace Common
             Playing,
             Error
         }
+
+        public enum CommonAnimation
+        {
+            Idle
+        }
     }
 }
