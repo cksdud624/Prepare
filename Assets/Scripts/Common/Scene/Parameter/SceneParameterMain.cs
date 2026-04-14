@@ -7,10 +7,13 @@ namespace Common.Scene.Parameter
     public class SceneParameterMain : ScriptableObject
     {
         public StageData StageData { get; private set; }
+        public CharacterData PlayerData { get; private set; }
+        
 
-        public void Init(StageData stageData)
+        public void Init(StageData stageData, CharacterData playerData)
         {
             StageData = stageData;
+            PlayerData = playerData;
         }
     }
 }

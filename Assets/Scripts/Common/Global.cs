@@ -29,7 +29,7 @@ namespace Common
             
             //메인으로 바로 넘어가게 => 테스트 코드임
             var mainParameter = ScriptableObject.CreateInstance<SceneParameterMain>();
-            mainParameter.Init(Instance.TableManager.StageRecord.GetRecord(0101));
+            mainParameter.Init(Instance.TableManager.StageRecord.GetRecord(0101), Instance.TableManager.CharacterRecord.GetRecord(1001));
             SceneLoader.LoadScene(GameDefine.SceneType.Main, mainParameter);
         }
 
@@ -37,7 +37,7 @@ namespace Common
         {
             GameObject dontDestroyObject = new GameObject(typeof(T).Name);
             T component = dontDestroyObject.AddComponent<T>();
-            DontDestroyOnLoad(dontDestroyObject);
+            dontDestroyObject.transform.SetParent(Instance.transform);
             return component;
         }
 

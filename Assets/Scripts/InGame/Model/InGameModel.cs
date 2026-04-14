@@ -10,10 +10,12 @@ namespace InGame.Model
         #region Events
         public Action<PlayerSpawnData> OnSpawnPlayer { get; set; }
         public Action<List<CharacterSpawnData>> OnSpawnCharacters { get; set; }
+        public Action OnAssetInitialized { get; set; }
         #endregion
         
         #region Models
-        public InGameObjectModel InGameObject { get; private set; }
+        public InGameObjectModel InGameObjectModel { get; private set; }
+        public InGameAssetModel InGameAssetModel { get; private set; }
         #endregion
         
         #region Variables
@@ -22,7 +24,8 @@ namespace InGame.Model
 
         public InGameModel(SceneParameterMain sceneParameterMain)
         {
-            InGameObject = new ();
+            InGameObjectModel = new (sceneParameterMain);
+            InGameAssetModel = new ();
             StageData = sceneParameterMain.StageData;
         }
 
@@ -30,6 +33,7 @@ namespace InGame.Model
         {
             OnSpawnPlayer = null;
             OnSpawnCharacters = null;
+            OnAssetInitialized = null;
         }
     }
 }

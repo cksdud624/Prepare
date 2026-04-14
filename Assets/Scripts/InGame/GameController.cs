@@ -14,11 +14,30 @@ namespace InGame
          */
         [SerializeField] private StageScenarioPlayer scenarioPlayer;
         [SerializeField] private ObjectSpawner objectSpawner;
-        private StageData _stageData;
+        [SerializeField] private AssetLoadSignal assetLoadSignal;
+        private InGameModel _inGameModel;
+        
         public void Init(InGameModel inGameModel)
         {
+            _inGameModel = inGameModel;
+            _inGameModel.OnAssetInitialized += OnAssetInitialized;
+            
             objectSpawner.Init(inGameModel);
             scenarioPlayer.Init(inGameModel);
+            assetLoadSignal.Init(inGameModel);
+        }
+        
+        #region Event
+
+        private void OnAssetInitialized()
+        {
+            scenarioPlayer.SetScenario(0);
+        }
+        #endregion
+
+        private void OnDestroy()
+        {
+            assetLoadSignal.Dispose();
         }
     }
 }

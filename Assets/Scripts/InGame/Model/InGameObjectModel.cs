@@ -1,15 +1,23 @@
 using System.Collections.Generic;
+using Common.Scene.Parameter;
+using Generated.Table;
 using InGame.Object;
 
 namespace InGame.Model
 {
     public class InGameObjectModel
     {
+        public InGameObjectModel(SceneParameterMain sceneParameterMain)
+        {
+            PlayerData = sceneParameterMain.PlayerData;
+        }
+        
         private List<ObjectBase> _objects = new();
         public IReadOnlyList<ObjectBase> Objects => _objects;
         private List<CharacterBase> _characters = new();
         public IReadOnlyList<CharacterBase> Characters => _characters;
         public CharacterBase Player { get; private set; }
+        public CharacterData PlayerData { get; private set; }
 
         public void AddObject(ObjectBase objectBase) => _objects.Add(objectBase);
         public void RemoveObject(ObjectBase objectBase) => _objects.Remove(objectBase);

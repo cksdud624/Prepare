@@ -10,7 +10,7 @@ namespace InGame
     public class StageScenarioPlayer : MonoBehaviour
     {
         private List<StageScenarioData> _stageScenarioDatas;
-        private StageScenarioData _currentScenario;
+        private int _currentScenarioIndex;
         private InGameModel _inGameModel;
         
         public void Init(InGameModel inGameModel)
@@ -21,18 +21,18 @@ namespace InGame
                 .ThenBy(data => data.Id).ToList();
             
             if (!(_stageScenarioDatas?.Count > 0))
-            {
                 Debug.LogError($"{GetType()} stage scenario data not found");
-                return;
-            }
-            SetScenario(_stageScenarioDatas[0]);
         }
         
-        private void SetScenario(StageScenarioData scenarioData)
+        public void SetScenario(int index)
         {
-            _currentScenario = scenarioData;
-            //1. 플레이어 스폰
-            var playerSpawn = _currentScenario.PlayerSpawn;
+            if (_stageScenarioDatas == null || index >= _stageScenarioDatas.Count)
+            {
+                Debug.LogError($"Scenario data index out of range: {index}");
+                return;
+            }
+            _currentScenarioIndex = index;
+            var playerSpawn = _stageScenarioDatas[index].PlayerSpawn;
             if (playerSpawn != 0)
             {
                 var playerSpawnData = Global.Instance.TableManager.PlayerSpawnRecord.GetRecord(playerSpawn);

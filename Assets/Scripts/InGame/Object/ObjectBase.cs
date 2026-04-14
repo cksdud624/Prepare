@@ -21,12 +21,12 @@ namespace InGame.Object
 
         protected virtual void AddObject()
         {
-            inGameModel.InGameObject.AddObject(this);
+            inGameModel.InGameObjectModel.AddObject(this);
         }
 
         protected virtual void OnDestroy()
         {
-            inGameModel.InGameObject.RemoveObject(this);
+            inGameModel.InGameObjectModel.RemoveObject(this);
         }
         #endregion
         
@@ -37,6 +37,7 @@ namespace InGame.Object
         #endregion
 
         public ObjectState State { get; private set; }
+        public GameObject Model { get; protected set; }
         protected bool isPlayer;
     }
 }

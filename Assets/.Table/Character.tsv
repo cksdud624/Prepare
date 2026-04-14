@@ -1,4 +1,4 @@
 Id	Name	AnimatorId
 long	string	List<long>
-1001	UnityChan	100101,100102
+1001	TestModel	100101,100102
 1002	UnityChan2	100201

@@ -1,3 +1,4 @@
+using Common;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -9,25 +10,21 @@ namespace InGame.Object
 
         protected override void AddObject()
         {
-            inGameModel.InGameObject.AddCharacter(this);
+            inGameModel.InGameObjectModel.AddCharacter(this);
         }
 
         protected override void OnDestroy()
         {
-            inGameModel.InGameObject.RemoveCharacter(this);
+            inGameModel.InGameObjectModel.RemoveCharacter(this);
         }
         #endregion
         
         #region Asset Management
         protected override void LoadAsset()
         {
+            var model = inGameModel.InGameAssetModel.GetModel(inGameModel.InGameObjectModel.PlayerData.Id);
+            Model = Instantiate(model, this.transform);
         }
         #endregion
-        
-        
-        [SerializeField] protected Animator animator;
-        protected GameObject Model;
-        
-        protected Rigidbody Rigidbody;
     }
 }
