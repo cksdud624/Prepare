@@ -1,19 +1,21 @@
+using System;
 using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using static Common.AssetKeys;
+using Object = UnityEngine.Object;
 
 namespace Common
 {
     public class AssetManager : MonoBehaviour
     {
-        private Dictionary<string, List<AsyncOperationHandle>> _addressableCache = new ();
+        private readonly Dictionary<string, List<AsyncOperationHandle>> _addressableCache = new ();
         
-        public async UniTask<T> LoadAssetAsync<T>(LoadTarget target, long id) where T : Object
+        public async UniTask<T> LoadAssetAsync<T>(LoadTarget target, string assetName) where T : Object
         {
-            string key = GetAddressableKey(target, id);
+            string key = GetAddressableKey(target, assetName);
             var handle = Addressables.LoadAssetAsync<T>(key);
             T asset = await handle.ToUniTask();
             if(asset == null)
@@ -27,9 +29,9 @@ namespace Common
             return asset;
         }
 
-        public void ReleaseAsset<T>(LoadTarget target, long id) where T : Object
+        public void ReleaseAsset<T>(LoadTarget target, string assetName) where T : Object
         {
-            string key = GetAddressableKey(target, id);
+            string key = GetAddressableKey(target, assetName);
             if (_addressableCache.TryGetValue(key, out var list) && list.Count > 0)
             {
                 var handle = list[^1];
@@ -47,18 +49,23 @@ namespace Common
     {
         public enum LoadTarget
         {
-            Model
+            Model,
+            AnimationClip
         }
 
         private const string Model = "Assets/AddressableAssets/Prefab/Model/";
+        private const string AnimationClip = "Assets/AddressableAssets/AnimationClip/";
 
-        public static string GetAddressableKey(LoadTarget target, long id)
+        public static string GetAddressableKey(LoadTarget target, string assetName)
         {
             string key;
             switch (target)
             {
-                case  LoadTarget.Model:
-                    key = Model + id + ".prefab";
+                case LoadTarget.Model:
+                    key = Model + assetName + ".prefab";
+                    break;
+                case LoadTarget.AnimationClip:
+                    key = AnimationClip + assetName + ".anim";
                     break;
                 default:
                     key = string.Empty;

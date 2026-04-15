@@ -44,18 +44,18 @@ namespace Generated.Table
 	{
 		public long Id {get; private set;}
 		public string Name {get; private set;}
-		public List<long> AnimatorId {get; private set;}
+		public List<string> CustomAnimation {get; private set;}
 
 		public CharacterData(BinaryReader reader)
 		{
 			string[] tableDatas = reader.ReadString().Split('	');
 			Id = long.TryParse(tableDatas[0], out long vLong0) ? vLong0 : 0L;
 			Name = tableDatas[1];
-			AnimatorId = new ();
+			CustomAnimation = new ();
 			string[] items2 = tableDatas[2].Split(',');
 			foreach (var item in items2)
 			{
-				AnimatorId.Add(long.TryParse(item, out long vLong2) ? vLong2 : 0L);
+				CustomAnimation.Add(item);
 			}
 		}
 	}

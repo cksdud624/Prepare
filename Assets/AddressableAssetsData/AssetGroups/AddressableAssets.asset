@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AddressableAssets
   m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
   m_GroupName: AddressableAssets
-  m_GUID: 29f45c9294bf5324995fbc34a97c7148
+  m_GUID: 430cd549cbcc5394ba2697f42974c83c
   m_SerializeEntries:
   - m_GUID: 081709132f94b0146babcac5a63eb073
     m_Address: Assets/AddressableAssets
@@ -24,5 +24,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: 5250151032863554d8010daa23fb09d3, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: 323781d5d6016774d96a97462e3677b8, type: 2}
-    - {fileID: 11400000, guid: 9aa357f4651d3d14793d230ddba153f7, type: 2}
+    - {fileID: 11400000, guid: 3233ecea99290764f81deb6a8a00d7d0, type: 2}
+    - {fileID: 11400000, guid: 77e9ce279bd55274a98957f3ad829dba, type: 2}

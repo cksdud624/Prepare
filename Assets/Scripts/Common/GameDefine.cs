@@ -1,5 +1,3 @@
-using Unity.VectorGraphics;
-
 namespace Common
 {
     public static class GameDefine
@@ -18,7 +16,7 @@ namespace Common
             Error
         }
 
-        public enum CommonAnimation
+        public enum InGameCommonAnimation
         {
             Idle
         }
