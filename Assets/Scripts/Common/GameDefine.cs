@@ -18,7 +18,8 @@ namespace Common
 
         public enum InGameCommonAnimation
         {
-            Idle
+            Idle,
+            Walk,
         }
     }
 }

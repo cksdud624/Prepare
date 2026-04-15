@@ -21,7 +21,7 @@ namespace InGame.Object
         private void SpawnPlayer(PlayerSpawnData playerSpawnData)
         {
             var player = Instantiate(characterPrefab, playerSpawnData.SpawnPos, Quaternion.identity);
-            player.Init(_inGameModel, true);
+            player.Init(_inGameModel, _inGameModel.InGameObjectModel.PlayerData ,true);
         }
 
         private void SpawnCharacters(List<CharacterSpawnData> characterSpawnDatas)

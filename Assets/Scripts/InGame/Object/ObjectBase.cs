@@ -1,4 +1,6 @@
 using Cysharp.Threading.Tasks;
+using Generated.Table;
+using InGame.Controller;
 using InGame.Model;
 using UnityEngine;
 using ObjectState = Common.GameDefine.ObjectState;
@@ -12,11 +14,12 @@ namespace InGame.Object
 
         public void Init(InGameModel model, bool isPlayer = false)
         {
-            this.isPlayer = isPlayer;
+            Hub = new ();
+            Hub.isPlayer = isPlayer;
             inGameModel = model;
             AddObject();
             AddParts();
-            State = ObjectState.Ready;
+            Hub.State = ObjectState.Ready;
         }
 
         protected virtual void AddObject()
@@ -35,11 +38,7 @@ namespace InGame.Object
         {
         }
         #endregion
-
-        public ObjectState State { get; private set; }
-        protected GameObject Model { get; set; }
-        protected Rigidbody Rigidbody { get; set; }
-        protected Collider Collider { get; set; }
-        protected bool isPlayer;
+        
+        protected ObjectHub Hub { get; set; }
     }
 }
