@@ -41,7 +41,7 @@ namespace InGame
                 }
             }
             
-            _inGameModel.OnAssetInitialized?.Invoke();
+            _inGameModel.NotifyOnInitialized();
         }
         
         public void Dispose()

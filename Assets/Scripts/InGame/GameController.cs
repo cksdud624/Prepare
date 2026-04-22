@@ -20,7 +20,7 @@ namespace InGame
         public void Init(InGameModel inGameModel)
         {
             _inGameModel = inGameModel;
-            _inGameModel.OnAssetInitialized += OnAssetInitialized;
+            _inGameModel.OnInitialized += OnInitialized;
             
             objectSpawner.Init(inGameModel);
             scenarioPlayer.Init(inGameModel);
@@ -29,7 +29,7 @@ namespace InGame
         
         #region Event
 
-        private void OnAssetInitialized()
+        private void OnInitialized()
         {
             scenarioPlayer.SetScenario(0);
         }

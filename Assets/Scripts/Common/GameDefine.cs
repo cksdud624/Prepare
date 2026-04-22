@@ -13,6 +13,7 @@ namespace Common
             None,
             Ready,
             Playing,
+            Sleep,
             Error
         }
 

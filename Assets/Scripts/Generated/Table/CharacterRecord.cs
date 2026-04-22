@@ -45,6 +45,9 @@ namespace Generated.Table
 		public long Id {get; private set;}
 		public string Name {get; private set;}
 		public List<string> CustomAnimation {get; private set;}
+		public Vector3 MoveColliderCenter {get; private set;}
+		public float MoveColliderRadius {get; private set;}
+		public float MoveColliderHeight {get; private set;}
 
 		public CharacterData(BinaryReader reader)
 		{
@@ -57,6 +60,21 @@ namespace Generated.Table
 			{
 				CustomAnimation.Add(item);
 			}
+			string[] items3 = tableDatas[3].Split(';');
+			if (items3.Length == 3)
+			{
+				float.TryParse(items3[0], out float resultX3);
+				float.TryParse(items3[1], out float resultY3);
+				float.TryParse(items3[2], out float resultZ3);
+				MoveColliderCenter = new Vector3(resultX3, resultY3, resultZ3);
+			}
+			else
+			{
+				MoveColliderCenter = Vector3.zero;
+				Debug.LogError(MoveColliderCenter + "is not Vector3");
+			}
+			MoveColliderRadius = float.TryParse(tableDatas[4], out float vFloat4) ? vFloat4 : 0f;
+			MoveColliderHeight = float.TryParse(tableDatas[5], out float vFloat5) ? vFloat5 : 0f;
 		}
 	}
 }

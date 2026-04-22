@@ -16,8 +16,10 @@ namespace InGame.Model
         public IReadOnlyList<ObjectBase> Objects => _objects;
         private List<CharacterBase> _characters = new();
         public IReadOnlyList<CharacterBase> Characters => _characters;
-        public CharacterBase Player { get; private set; }
+        
+        //초기화 시 => SceneParam으로 받은 PlayerData로 플레이어를 인스턴스화
         public CharacterData PlayerData { get; private set; }
+        public CharacterBase Player { get; private set; }
 
         public void AddObject(ObjectBase objectBase) => _objects.Add(objectBase);
         public void RemoveObject(ObjectBase objectBase) => _objects.Remove(objectBase);

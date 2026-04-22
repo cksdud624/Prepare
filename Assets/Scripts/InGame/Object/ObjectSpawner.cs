@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Generated.Table;
 using InGame.Model;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace InGame.Object
@@ -20,8 +21,19 @@ namespace InGame.Object
 
         private void SpawnPlayer(PlayerSpawnData playerSpawnData)
         {
-            var player = Instantiate(characterPrefab, playerSpawnData.SpawnPos, Quaternion.identity);
-            player.Init(_inGameModel, _inGameModel.InGameObjectModel.PlayerData ,true);
+            var rotation = Quaternion.Euler(new Vector3(0, playerSpawnData.SpawnRotation, 0));
+            if (_inGameModel.InGameObjectModel.Player == null)
+            {
+                if (_inGameModel.InGameObjectModel.PlayerData == null) Debug.LogError("PlayerData is null");
+                var player = Instantiate(characterPrefab, playerSpawnData.SpawnPosition, rotation);
+                player.Init(_inGameModel, _inGameModel.InGameObjectModel.PlayerData, true);
+            }
+            else
+            {
+                var player  = _inGameModel.InGameObjectModel.Player;
+                player.transform.position = playerSpawnData.SpawnPosition;
+                player.transform.rotation = rotation;
+            }
         }
 
         private void SpawnCharacters(List<CharacterSpawnData> characterSpawnDatas)

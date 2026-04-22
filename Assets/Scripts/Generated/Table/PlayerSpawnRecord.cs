@@ -43,7 +43,8 @@ namespace Generated.Table
 	public class PlayerSpawnData
 	{
 		public long Id {get; private set;}
-		public Vector3 SpawnPos {get; private set;}
+		public Vector3 SpawnPosition {get; private set;}
+		public float SpawnRotation {get; private set;}
 
 		public PlayerSpawnData(BinaryReader reader)
 		{
@@ -55,13 +56,14 @@ namespace Generated.Table
 				float.TryParse(items1[0], out float resultX1);
 				float.TryParse(items1[1], out float resultY1);
 				float.TryParse(items1[2], out float resultZ1);
-				SpawnPos = new Vector3(resultX1, resultY1, resultZ1);
+				SpawnPosition = new Vector3(resultX1, resultY1, resultZ1);
 			}
 			else
 			{
-				SpawnPos = Vector3.zero;
-				Debug.LogError(SpawnPos + "is not Vector3");
+				SpawnPosition = Vector3.zero;
+				Debug.LogError(SpawnPosition + "is not Vector3");
 			}
+			SpawnRotation = float.TryParse(tableDatas[2], out float vFloat2) ? vFloat2 : 0f;
 		}
 	}
 }

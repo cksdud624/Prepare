@@ -7,10 +7,21 @@ namespace InGame.Model
 {
     public class InGameModel
     {
+        public InGameModel(SceneParameterMain sceneParameterMain)
+        {
+            InGameObjectModel = new (sceneParameterMain);
+            InGameAssetModel = new ();
+            StageData = sceneParameterMain.StageData;
+        }
+        
         #region Events
-        public Action<PlayerSpawnData> OnSpawnPlayer { get; set; }
-        public Action<List<CharacterSpawnData>> OnSpawnCharacters { get; set; }
-        public Action OnAssetInitialized { get; set; }
+
+        public event Action<PlayerSpawnData> OnSpawnPlayer;
+        public void NotifyOnSpawnPlayer(PlayerSpawnData data) => OnSpawnPlayer?.Invoke(data);
+        public event Action<List<CharacterSpawnData>> OnSpawnCharacters;
+        public void NotifyOnSpawnCharacters(List<CharacterSpawnData> data) => OnSpawnCharacters?.Invoke(data);
+        public event Action OnInitialized;
+        public void NotifyOnInitialized() => OnInitialized?.Invoke();
         #endregion
         
         #region Models
@@ -22,18 +33,11 @@ namespace InGame.Model
         public StageData StageData { get; private set; }
         #endregion
 
-        public InGameModel(SceneParameterMain sceneParameterMain)
-        {
-            InGameObjectModel = new (sceneParameterMain);
-            InGameAssetModel = new ();
-            StageData = sceneParameterMain.StageData;
-        }
-
         public void Release()
         {
             OnSpawnPlayer = null;
             OnSpawnCharacters = null;
-            OnAssetInitialized = null;
+            OnInitialized = null;
         }
     }
 }

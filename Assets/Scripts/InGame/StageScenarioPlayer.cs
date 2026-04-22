@@ -32,6 +32,8 @@ namespace InGame
                 return;
             }
             _currentScenarioIndex = index;
+            
+            //플레이어 스폰(0은 없는 것)
             var playerSpawn = _stageScenarioDatas[index].PlayerSpawn;
             if (playerSpawn != 0)
             {
@@ -42,12 +44,8 @@ namespace InGame
                     return;
                 }
                 
-                _inGameModel.OnSpawnPlayer?.Invoke(playerSpawnData);
+                _inGameModel.NotifyOnSpawnPlayer(playerSpawnData);
             }
-            //2. 캐릭터 스폰 
-            //시나리오 세팅
-            //objectspawner에게 스폰 이벤트를 보내야하는데 전부 초기화가 끝나야 제대로 시나리오 세팅을 하는 것이
-            //중요하기 때문에 고민좀해봐야함
         }
     }
 }

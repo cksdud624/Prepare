@@ -17,10 +17,10 @@ namespace InGame.Object
         #region Object Management
         public void Init(InGameModel model, CharacterData characterData ,bool isPlayer = false)
         {
+            inGameModel = model;
             Hub = new();
             Hub.isPlayer = isPlayer;
-            inGameModel = model;
-            CharacterData = characterData;
+            Hub.CharacterData = characterData;
             AddObject();
             AddParts();
             Hub.State = ObjectState.Ready;
@@ -39,24 +39,30 @@ namespace InGame.Object
         #region Components
         protected override void AddParts()
         {
-            var model = inGameModel.InGameAssetModel.GetModel(inGameModel.InGameObjectModel.PlayerData.Id);
-            Hub.Model = Instantiate(model, this.transform);
-            var modelCollider = model.GetComponent<Collider>();
-            if (modelCollider != null)
-                Hub.Collider = modelCollider;
-
-            Hub.Rigidbody = gameObject.AddComponent<Rigidbody>();
-            Hub.Rigidbody.constraints = RigidbodyConstraints.FreezeAll & ~RigidbodyConstraints.FreezePositionY;
+            //플레이어 모델
+            var model = inGameModel.InGameAssetModel.GetModel(Hub.CharacterData.Id);
+            Hub.Model = Instantiate(model, transform);
             
-            var customClips = CharacterData.CustomAnimation.ToHashSet();
+            //콜라이더
+            Hub.MoveCollider = gameObject.AddComponent<CapsuleCollider>();
+            Hub.MoveCollider.center = Hub.CharacterData.MoveColliderCenter;
+            Hub.MoveCollider.radius = Hub.CharacterData.MoveColliderRadius;
+            Hub.MoveCollider.height = Hub.CharacterData.MoveColliderHeight;
+            
+            //리지드바디
+            Hub.Rigidbody = gameObject.AddComponent<Rigidbody>();
+            Hub.Rigidbody.constraints = RigidbodyConstraints.FreezeRotation;
+            
+            //커스텀 애니메이션 클립 => 기본 InGameCommonAnimation으로 명시되어있는 애니메이션들을 커스텀 가능
+            var customClips = Hub.CharacterData.CustomAnimation.ToHashSet();
             Dictionary<InGameCommonAnimation, AnimationClip> animationClips = new ();
             var assetModel = inGameModel.InGameAssetModel;
             foreach (InGameCommonAnimation anim in Enum.GetValues(typeof(InGameCommonAnimation)))
             {
-                string animName = anim.ToString();
                 string key;
+                string animName = anim.ToString();
                 if (customClips.Contains(animName))
-                    key = CharacterData.Id + "_" + animName;
+                    key = Hub.CharacterData.Id + "_" + animName;
                 else
                     key = "default_"  + animName;
                 var clip = assetModel.GetAnimationClip(key);
@@ -67,8 +73,8 @@ namespace InGame.Object
             }
             
             Hub.AnimationPlayer = gameObject.AddComponent<AnimationPlayer>();
-            Hub.AnimationPlayer.Init(Hub.Model, Hub.Model.GetComponent<Animator>(), animationClips);
-            Hub.AnimationPlayer.PlayAnimation(InGameCommonAnimation.Idle);
+            Hub.AnimationPlayer.Init(Hub.Model);
+            //Hub.AnimationPlayer.PlayAnimation(InGameCommonAnimation.Idle);
 
             if (Hub.isPlayer)
             {
@@ -82,6 +88,5 @@ namespace InGame.Object
             get => (CharacterHub)base.Hub;
             set => base.Hub = value;
         }
-        private CharacterData CharacterData { get; set; }
     }
 }

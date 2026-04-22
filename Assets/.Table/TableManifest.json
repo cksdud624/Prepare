@@ -2,7 +2,7 @@
     "tables": [
         {
             "fileName": "Character",
-            "hash": "cdbfd18b6cc640c78208a89677b975d3"
+            "hash": "d6aefddec7e8328f3caa0c4c19fd4a4d"
         },
         {
             "fileName": "CharacterSpawn",
@@ -10,7 +10,7 @@
         },
         {
             "fileName": "PlayerSpawn",
-            "hash": "55764374cb856e92ff1bfb5941985e47"
+            "hash": "743f3a3d8a36b25c4753caec9421d1cb"
         },
         {
             "fileName": "ScenarioBranchParam",
