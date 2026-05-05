@@ -11,7 +11,6 @@ namespace InGame
     {
         [SerializeField] private GameController gameController;
         private SceneParameterMain _sceneParameterMain;
-        private InGameModel _inGameModel;
         protected void Awake() => Global.Instance.SceneLoader.SetCurrentScene<SceneParameterMain>(this);
         
         public override void InitScene()
@@ -22,17 +21,9 @@ namespace InGame
                 return;
             }
             
-            base.InitScene();
-            _inGameModel = new InGameModel(_sceneParameterMain);
-            gameController.Init(_inGameModel);
+            gameController.Init(new InGameModel(_sceneParameterMain));
         }
 
         public void SetParameter(SceneParameterMain parameter) => _sceneParameterMain = parameter;
-
-        public override void DisposeScene()
-        {
-            base.DisposeScene();
-            _inGameModel?.Release();
-        }
     }
 }

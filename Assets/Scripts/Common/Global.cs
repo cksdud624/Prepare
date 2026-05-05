@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Common.Info;
 using Common.Scene;
 using Common.Scene.Parameter;
 using Common.Template;
@@ -28,8 +29,9 @@ namespace Common
             AssetManager = InitGlobal<AssetManager>();
             
             //메인으로 바로 넘어가게 => 테스트 코드임
-            var mainParameter = ScriptableObject.CreateInstance<SceneParameterMain>();
-            mainParameter.Init(Instance.TableManager.StageRecord.GetRecord(0101), Instance.TableManager.CharacterRecord.GetRecord(1001));
+            var playerInfo = new PlayerInfo(Instance.TableManager.CharacterRecord.GetRecord(1001));
+            var stageData = Instance.TableManager.StageRecord.GetRecord(0101);
+            var mainParameter = new SceneParameterMain(stageData, playerInfo);
             SceneLoader.LoadScene(GameDefine.SceneType.Main, mainParameter);
         }
 

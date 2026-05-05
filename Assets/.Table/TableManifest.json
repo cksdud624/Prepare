@@ -1,28 +1,28 @@
 {
     "tables": [
         {
-            "fileName": "Character",
-            "hash": "d6aefddec7e8328f3caa0c4c19fd4a4d"
+            "fileName": "Stage",
+            "hash": "d08532fd435b919ca792cee520423b69"
         },
         {
             "fileName": "CharacterSpawn",
             "hash": "3afab5017b2b27348aa96b85b06cdefe"
         },
         {
-            "fileName": "PlayerSpawn",
-            "hash": "743f3a3d8a36b25c4753caec9421d1cb"
-        },
-        {
             "fileName": "ScenarioBranchParam",
             "hash": "6c5193f9bbf410c7fb1b0e67cc1d7cfe"
         },
         {
-            "fileName": "Stage",
-            "hash": "d08532fd435b919ca792cee520423b69"
-        },
-        {
             "fileName": "StageScenario",
             "hash": "9a5df5677fc6986cd4df2d886766362b"
+        },
+        {
+            "fileName": "Character",
+            "hash": "d6aefddec7e8328f3caa0c4c19fd4a4d"
+        },
+        {
+            "fileName": "PlayerSpawn",
+            "hash": "743f3a3d8a36b25c4753caec9421d1cb"
         }
     ]
 }

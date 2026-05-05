@@ -1,7 +1,6 @@
-using Common.Scene.Parameter;
+using Cysharp.Threading.Tasks;
 using InGame.Model;
 using InGame.Object;
-using Generated.Table;
 using UnityEngine;
 
 namespace InGame
@@ -12,32 +11,35 @@ namespace InGame
          * 인게임 컨트롤러
          * 게임에서 처음부터 끝을 전부 관리하는 형식으로 한다
          */
-        [SerializeField] private StageScenarioPlayer scenarioPlayer;
-        [SerializeField] private ObjectSpawner objectSpawner;
-        [SerializeField] private AssetLoadSignal assetLoadSignal;
+        [SerializeField] private ObjectSpawner objectSpawner; 
+        
         private InGameModel _inGameModel;
         
         public void Init(InGameModel inGameModel)
         {
             _inGameModel = inGameModel;
             _inGameModel.OnInitialized += OnInitialized;
-            
-            objectSpawner.Init(inGameModel);
-            scenarioPlayer.Init(inGameModel);
-            assetLoadSignal.Init(inGameModel);
+            objectSpawner.Init(_inGameModel);
+            InitAsync().Forget();
+        }
+
+        private async UniTask InitAsync()
+        {
+            _inGameModel.NotifyOnInitialized();
+            await UniTask.CompletedTask;
         }
         
-        #region Event
+        #region Events
 
         private void OnInitialized()
         {
-            scenarioPlayer.SetScenario(0);
+            Debug.Log("초기화");
         }
         #endregion
 
-        private void OnDestroy()
+        public void OnDestroy()
         {
-            assetLoadSignal.Dispose();
+            _inGameModel.Dispose();
         }
     }
 }

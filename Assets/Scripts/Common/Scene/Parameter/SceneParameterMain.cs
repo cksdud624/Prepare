@@ -1,19 +1,18 @@
+using Common.Info;
 using Generated.Table;
 using UnityEngine;
 
 namespace Common.Scene.Parameter
 {
-    [CreateAssetMenu(fileName = "SceneParameterMain", menuName = "Scriptable Objects/SceneParameterMain")]
-    public class SceneParameterMain : ScriptableObject
+    public class SceneParameterMain
     {
-        public StageData StageData { get; private set; }
-        public CharacterData PlayerData { get; private set; }
-        
-
-        public void Init(StageData stageData, CharacterData playerData)
+        public SceneParameterMain(StageData stageData, PlayerInfo playerInfo)
         {
             StageData = stageData;
-            PlayerData = playerData;
+            PlayerInfo = playerInfo;
         }
+        
+        public StageData StageData { get; private set; }
+        public PlayerInfo PlayerInfo { get; private set; }
     }
 }

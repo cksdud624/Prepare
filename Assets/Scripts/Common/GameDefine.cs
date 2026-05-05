@@ -8,19 +8,19 @@ namespace Common
             Main = 1
         }
 
+        public enum ObjectType
+        {
+            Object,
+            Character
+        }
+
         public enum ObjectState
         {
-            None,
+            Loading,
             Ready,
             Playing,
             Sleep,
             Error
-        }
-
-        public enum InGameCommonAnimation
-        {
-            Idle,
-            Walk,
         }
     }
 }
