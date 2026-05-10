@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 using Common.Info;
+using Cysharp.Threading.Tasks;
 using Generated.Table;
 using InGame.Model;
-using Unity.VisualScripting;
 using UnityEngine;
 
 namespace InGame.Object
@@ -16,26 +17,25 @@ namespace InGame.Object
         private List<ObjectBase> _objects = new ();
         private List<CharacterBase> _characters = new ();
         
-        public void Init(InGameModel inGameModel)
+        public async UniTask Init(InGameModel inGameModel)
         {
             _inGameModel = inGameModel;
+            await UniTask.CompletedTask;
         }
 
-        public void SpawnPlayer(PlayerInfo playerInfo)
+        public async UniTask SpawnPlayer(PlayerInfo playerInfo, Action onPlayerSpawned = null)
         {
             if (playerInfo.PlayerObject != null)
+            {
+                Debug.LogError("PlayerObject is null");
                 return;
+            }
 
             var player = Instantiate(characterBase);
-            player.Init(_inGameModel, playerInfo.CharacterData);
+            await player.Init(_inGameModel, playerInfo.CharacterData);
             _objects.Add(player);
-            _characters.Add(player);
+            _characters.Add(player);    
             playerInfo.PlayerObject = player;
-        }
-
-        public void SpawnCharacter(CharacterData characterData)
-        {
-            
         }
     }
 }

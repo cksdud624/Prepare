@@ -14,17 +14,9 @@ namespace InGame.Model
         #region Variables
         public PlayerInfo PlayerInfo { get; private set; }
         #endregion
-        
-        #region Events
-
-        public event Action OnInitialized;
-        public void NotifyOnInitialized() => OnInitialized?.Invoke();
-
-        #endregion
 
         public void Dispose()
         {
-            OnInitialized = null;
         }
     }
 }
