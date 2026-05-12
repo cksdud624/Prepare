@@ -23,6 +23,10 @@
         {
             "fileName": "PlayerSpawn",
             "hash": "743f3a3d8a36b25c4753caec9421d1cb"
+        },
+        {
+            "fileName": "WeaponStatus",
+            "hash": "674c575c5fe1e2199031fe00c9d43720"
         }
     ]
 }

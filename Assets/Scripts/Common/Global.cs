@@ -6,6 +6,7 @@ using Common.Template;
 using Common.Template.Interface;
 using Cysharp.Threading.Tasks;
 using Generated.Table;
+using InGame.Component.Model;
 using UnityEngine;
 
 namespace Common
@@ -29,7 +30,10 @@ namespace Common
             AssetManager = InitGlobal<AssetManager>();
             
             //메인으로 바로 넘어가게 => 테스트 코드임
-            var playerInfo = new PlayerInfo(Instance.TableManager.CharacterRecord.GetRecord(1001));
+            List<WeaponStatusData> weapons = new();
+            weapons.Add(Instance.TableManager.WeaponStatusRecord.GetRecord(1001));
+            CharacterModel characterModel = new(Instance.TableManager.CharacterRecord.GetRecord(1001), weapons);
+            var playerInfo = new PlayerInfo(characterModel);
             var stageData = Instance.TableManager.StageRecord.GetRecord(0101);
             var mainParameter = new SceneParameterMain(stageData, playerInfo);
             SceneLoader.LoadScene(GameDefine.SceneType.Main, mainParameter);

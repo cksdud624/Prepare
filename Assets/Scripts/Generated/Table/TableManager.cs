@@ -11,6 +11,7 @@ namespace Generated.Table
 		public StageScenarioRecord StageScenarioRecord {get; private set;}
 		public CharacterRecord CharacterRecord {get; private set;}
 		public PlayerSpawnRecord PlayerSpawnRecord {get; private set;}
+		public WeaponStatusRecord WeaponStatusRecord {get; private set;}
 
 		public async UniTask Init()
 		{
@@ -26,6 +27,8 @@ namespace Generated.Table
 			await CharacterRecord.Init();
 			PlayerSpawnRecord = new ();
 			await PlayerSpawnRecord.Init();
+			WeaponStatusRecord = new ();
+			await WeaponStatusRecord.Init();
 		}
 	}
 }

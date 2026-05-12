@@ -1,5 +1,7 @@
 using Cysharp.Threading.Tasks;
 using InGame.Component;
+using InGame.Component.Controller;
+using InGame.Component.Hub;
 using InGame.Model;
 using UniRx;
 using Unity.Cinemachine;
@@ -18,9 +20,10 @@ namespace InGame.Object
         protected InGameModel InGameModel;
         
         #region Components
-        protected CommandTranslator CommandTranslator; 
+        protected CommandTranslator CommandTranslator;
         protected ComponentBank ComponentBank;
-        protected CameraController CameraController;
+        protected ControllerBase Controller;
+        protected InputHub InputHub;
         #endregion
 
         public async UniTask Init(InGameModel inGameModel)
@@ -28,9 +31,28 @@ namespace InGame.Object
             InGameModel = inGameModel;
             await UniTask.CompletedTask;
         }
+        
+        public void SetPlaying()
+        {
+            if (State.Value is ObjectState.Ready or ObjectState.Sleep) State.Value = ObjectState.Playing;
+            else Debug.LogWarning("Object State is not ready");
+        }
 
-        public void AttachCamera(CinemachineCamera targetCamera) => CameraController.AttachCamera(targetCamera);
+        public void AttachController(bool isPlayer)
+        {
+            if (Controller != null)
+                Destroy(Controller);
 
-        public void DetachCamera() => CameraController.DetachCamera();
+            if (isPlayer)
+                Controller = gameObject.AddComponent<ControllerPlayer>();
+
+            Controller.Init(InputHub);
+        }
+
+        public void DetachController() => Destroy(Controller);
+
+        public void AttachCamera(CinemachineCamera targetCamera) => ComponentBank.CameraController.AttachCamera(targetCamera);
+
+        public void DetachCamera() => ComponentBank.CameraController.DetachCamera();
     }
 }

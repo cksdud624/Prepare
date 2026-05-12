@@ -2,6 +2,7 @@ using Common;
 using Common.Scene;
 using Common.Scene.Parameter;
 using Common.Template.Interface;
+using Cysharp.Threading.Tasks;
 using InGame.Model;
 using UnityEngine;
 
@@ -21,7 +22,7 @@ namespace InGame
                 return;
             }
             
-            gameController.Init(new InGameModel(_sceneParameterMain));
+            gameController.Init(new InGameModel(_sceneParameterMain)).Forget();
         }
 
         public void SetParameter(SceneParameterMain parameter) => _sceneParameterMain = parameter;

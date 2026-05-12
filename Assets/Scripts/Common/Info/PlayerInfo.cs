@@ -1,16 +1,17 @@
 using Generated.Table;
+using InGame.Component.Model;
 using InGame.Object;
 
 namespace Common.Info
 {
     public class PlayerInfo
     {
-        public PlayerInfo(CharacterData characterData)
+        public PlayerInfo(CharacterModel characterModel)
         {
-            CharacterData = characterData;
+            CharacterModel = characterModel;
         }
 
-        public CharacterData CharacterData { get; private set; }
+        public CharacterModel CharacterModel { get; private set; }
         
         public CharacterBase PlayerObject { get; set; }
     }

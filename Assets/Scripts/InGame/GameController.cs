@@ -1,3 +1,4 @@
+using Common;
 using Cysharp.Threading.Tasks;
 using InGame.Model;
 using InGame.Object;
@@ -21,16 +22,12 @@ namespace InGame
         {
             _inGameModel = inGameModel;
             await objectSpawner.Init(_inGameModel);
-            await objectSpawner.SpawnPlayer(_inGameModel.PlayerInfo, OnPlayerReady);
-            _inGameModel.PlayerInfo.PlayerObject.AttachCamera(cinemachineCamera);
+            await objectSpawner.SpawnPlayer(_inGameModel.PlayerInfo);
+            var player = _inGameModel.PlayerInfo.PlayerObject;
+            player.AttachCamera(cinemachineCamera);
+            player.AttachController(true);
+            player.SetPlaying();
         }
-        
-        #region Events
-        private void OnPlayerReady()
-        {
-            
-        }
-        #endregion
 
         public void OnDestroy()
         {

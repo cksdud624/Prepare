@@ -1,8 +1,7 @@
-using System;
 using System.Collections.Generic;
 using Common.Info;
 using Cysharp.Threading.Tasks;
-using Generated.Table;
+using InGame.Component.Model;
 using InGame.Model;
 using UnityEngine;
 
@@ -23,7 +22,7 @@ namespace InGame.Object
             await UniTask.CompletedTask;
         }
 
-        public async UniTask SpawnPlayer(PlayerInfo playerInfo, Action onPlayerSpawned = null)
+        public async UniTask SpawnPlayer(PlayerInfo playerInfo)
         {
             if (playerInfo.PlayerObject != null)
             {
@@ -32,7 +31,7 @@ namespace InGame.Object
             }
 
             var player = Instantiate(characterBase);
-            await player.Init(_inGameModel, playerInfo.CharacterData);
+            await player.Init(_inGameModel, playerInfo.CharacterModel);
             _objects.Add(player);
             _characters.Add(player);    
             playerInfo.PlayerObject = player;
