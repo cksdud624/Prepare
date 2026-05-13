@@ -35,6 +35,7 @@ namespace Common
         public enum CombatCommandType
         {
             Fire,
+            Aim
         }
 
         public static readonly Vector3 DefaultPlayerSight = new (0, 1.6f, 0);
@@ -49,12 +50,24 @@ namespace Common
         public const float DefaultCrossFadeDuration = 0.1f;
         public enum AnimationType
         {
+            //전체
             Idle,
             Walk,
+            //하반신
+            
+            //상반신
             Fire,
             Aim,
             AimFire
         }
+
+        public enum AvatarMaskType
+        {
+            Full,
+            Upper,
+            Lower,
+        }
+        
         #endregion
         
         #region Combat

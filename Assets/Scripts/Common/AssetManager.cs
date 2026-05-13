@@ -50,11 +50,13 @@ namespace Common
         public enum LoadTarget
         {
             Model,
-            AnimationClip
+            AnimationClip,
+            AvatarMask
         }
 
         private const string Model = "Assets/AddressableAssets/Prefab/Model/";
         private const string AnimationClip = "Assets/AddressableAssets/AnimationClip/";
+        private const string AvatarMask = "Assets/AddressableAssets/AvatarMask/";
 
         public static string GetAddressableKey(LoadTarget target, string assetName)
         {
@@ -67,11 +69,14 @@ namespace Common
                 case LoadTarget.AnimationClip:
                     key = AnimationClip + assetName + ".anim";
                     break;
+                case LoadTarget.AvatarMask:
+                    key = AvatarMask + assetName + ".mask";
+                    break;
                 default:
                     key = string.Empty;
                     break;
             }
-            
+
             return key;
         }
     }

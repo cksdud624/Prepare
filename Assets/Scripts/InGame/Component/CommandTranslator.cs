@@ -8,10 +8,11 @@ using InGame.Model;
 using UnityEngine;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
 using CombatCommandType = Common.GameDefine.CombatCommandType;
+using CombatState = Common.GameDefine.CombatState;
 
 namespace InGame.Component
 {
-    public class CommandTranslator : MonoBehaviour, IUpdateable
+    public class CommandTranslator : MonoBehaviour, IUpdateable, IFixedUpdateable
     {
         private InGameModel _inGameModel;
         private ComponentBank _componentBank;
@@ -19,7 +20,9 @@ namespace InGame.Component
 
         private readonly List<IMoveCommand> _moveCommands = new();
         private readonly List<ICombatCommand> _combatCommands = new();
-        private bool _isCombatLock = false;
+        private readonly List<ICombatCommand> _removePending = new();
+        private readonly Dictionary<MoveCommandGroup, int> _lockedMoveGroups = new();
+        private bool _isCombatLock;
 
         public async UniTask Init(InGameModel inGameModel, InputHub inputHub, ComponentBank componentBank)
         {
@@ -31,8 +34,9 @@ namespace InGame.Component
             _inputHub.OnRightClick += OnRightClick;
             
             Global.Instance.BindUpdate(this);
+            Global.Instance.BindFixedUpdate(this);
 
-            PlayCommand(GameDefine.MoveCommandType.Idle);
+            PlayCommand(MoveCommandType.Idle);
             await UniTask.CompletedTask;
         }
 
@@ -51,26 +55,50 @@ namespace InGame.Component
 
         public void OnRightClick(bool isClick)
         {
-            Debug.Log("OnRightClick: " + isClick);
+            var characterModel = _componentBank.CharacterModel;
+            if (isClick && characterModel.CombatState is CombatState.Standard)
+                PlayCommand(CombatCommandType.Aim);
+            else if(isClick && characterModel.CombatState is CombatState.Aim)
+                Debug.Log("아잇!");
         }
 
         public void OnUpdate()
         {
             foreach (var moveCommand in _moveCommands)
                 moveCommand.Stay();
-
             foreach (var combatCommand in _combatCommands)
                 combatCommand.Stay();
-
-            for (int i = _combatCommands.Count - 1; i >= 0; i--)
+            
+            if (_removePending.Count > 0)
             {
-                if (_combatCommands[i].IsFinished)
+                foreach (var command in _removePending)
                 {
-                    if(_combatCommands[i].IsLock)
+                    if (command.IsCombatLock)
                         _isCombatLock = false;
-                    _combatCommands[i].Exit();
-                    _combatCommands.RemoveAt(i);
+                    command.Exit();
+                    _combatCommands.Remove(command);
                 }
+                _removePending.Clear();
+            }
+        }
+
+        public void OnFixedUpdate()
+        {
+            foreach (var moveCommand in _moveCommands)
+                moveCommand.FixedStay();
+            foreach (var combatCommand in _combatCommands)
+                combatCommand.FixedStay();
+            
+            if (_removePending.Count > 0)
+            {
+                foreach (var command in _removePending)
+                {
+                    if (command.IsCombatLock)
+                        _isCombatLock = false;
+                    command.Exit();
+                    _combatCommands.Remove(command);
+                }
+                _removePending.Clear();
             }
         }
         #endregion
@@ -90,20 +118,24 @@ namespace InGame.Component
                 return;
             }
 
-            if (newCommand.ExclusiveGroup.HasValue)
+            bool isLocked = false;
+            if (newCommand.MoveCommandsGroup.HasValue)
             {
                 for (int i = _moveCommands.Count - 1; i >= 0; i--)
                 {
-                    if (_moveCommands[i].ExclusiveGroup == newCommand.ExclusiveGroup)
+                    if (_moveCommands[i].MoveCommandsGroup == newCommand.MoveCommandsGroup)
                     {
                         _moveCommands[i].Exit();
                         _moveCommands.RemoveAt(i);
                     }
                 }
+
+                if (_lockedMoveGroups.ContainsKey(newCommand.MoveCommandsGroup.Value))
+                    isLocked = true;
             }
 
             _moveCommands.Add(newCommand);
-            newCommand.Entry(_componentBank);
+            newCommand.Entry(_componentBank, isLocked);
         }
 
         private void PlayCommand(CombatCommandType combatCommandType)
@@ -114,6 +146,7 @@ namespace InGame.Component
             ICombatCommand newCommand = combatCommandType switch
             {
                 CombatCommandType.Fire => new CharacterFireCombatCommand(),
+                CombatCommandType.Aim => new CharacterAimCombatCommand(),
                 _ => null
             };
 
@@ -123,11 +156,46 @@ namespace InGame.Component
                 return;
             }
             
-            if(newCommand.IsLock)
+            if (newCommand.IsCombatLock)
                 _isCombatLock = true;
-            
+
+            if (newCommand.LockedMoveGroups is { Length: > 0 })
+            {
+                foreach (var lockGroup in newCommand.LockedMoveGroups)
+                {
+                    _lockedMoveGroups.TryAdd(lockGroup, 0);
+                    _lockedMoveGroups[lockGroup]++;
+                    
+                    foreach (var moveCommand in _moveCommands)
+                    {
+                        if(lockGroup == moveCommand.MoveCommandsGroup)
+                            moveCommand.Lock();
+                    }
+                }
+            }
+
+            newCommand.OnFinished += OnCombatCommandFinished;
             _combatCommands.Add(newCommand);
             newCommand.Entry(_componentBank);
+        }
+
+        private void OnCombatCommandFinished(ICombatCommand command)
+        {
+            if (command.LockedMoveGroups is { Length: > 0 })
+            {
+                foreach (var lockGroup in command.LockedMoveGroups)
+                {
+                    _lockedMoveGroups[lockGroup]--; 
+                    if (_lockedMoveGroups[lockGroup] <= 0)
+                    {
+                        _lockedMoveGroups.Remove(lockGroup);
+                        foreach (var moveCommand in _moveCommands)
+                            moveCommand.UnLock();
+                    }
+                }
+            }
+            
+            _removePending.Add(command);
         }
 
         private void OnDestroy()

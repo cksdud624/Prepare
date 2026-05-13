@@ -13,19 +13,19 @@ namespace InGame.Component
     public class ComponentBank : MonoBehaviour
     {
         private InGameModel _inGameModel;
-        private CharacterModel _characterModel;
-        
         public GameObject Model { get; private set; }
         public AnimationPlayer AnimationPlayer { get; private set; }
         public CameraController CameraController { get; private set; }
         public Rigidbody Rigidbody { get; private set; }
         public Collider Collider { get; private set; }
         public InputHub InputHub { get; private set; }
+        public CharacterModel CharacterModel { get; private set; }
+
 
         public async UniTask Init(InGameModel inGameModel, InputHub inputHub, CharacterModel characterModel)
         {
             _inGameModel = inGameModel;
-            _characterModel = characterModel;
+            CharacterModel = characterModel;
             InputHub = inputHub;
 
             var assetManager = Global.Instance.AssetManager;
@@ -33,7 +33,7 @@ namespace InGame.Component
             var model = await assetManager.LoadAssetAsync<GameObject>(LoadTarget.Model, characterData.Id.ToString());
             if (model == null)
             {
-                Debug.LogWarning("Model not found: " + _characterModel.CharacterData.Id);
+                Debug.LogWarning("Model not found: " + CharacterModel.CharacterData.Id);
                 return;
             }
             Model = Instantiate(model, transform);
@@ -62,7 +62,7 @@ namespace InGame.Component
         {
             var assetManager = Global.Instance?.AssetManager;
             if (assetManager == null) return;
-            assetManager.ReleaseAsset<GameObject>(LoadTarget.Model, _characterModel.CharacterData.Id.ToString());
+            assetManager.ReleaseAsset<GameObject>(LoadTarget.Model, CharacterModel.CharacterData.Id.ToString());
         }
     }
 }
