@@ -1,12 +1,13 @@
 using Common;
-using AnimationType = Common.GameDefine.AnimationType;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
+using BlendTreeType = Common.GameDefine.BlendTreeType;
+using AvatarMaskType = Common.GameDefine.AvatarMaskType;
 
 namespace InGame.Component.Command
 {
     public class CharacterIdleMoveCommand : IMoveCommand
     {
-        public MoveCommandType CommandType { get; }
+        public MoveCommandType CommandType { get; } 
         public MoveCommandGroup? MoveCommandsGroup { get; } = MoveCommandGroup.Locomotion;
         private ComponentBank _componentBank;
         private bool _isLocked;
@@ -15,10 +16,9 @@ namespace InGame.Component.Command
         {
             _componentBank = componentBank;
             _isLocked = isLocked;
-            _componentBank.AnimationPlayer.StopLayer(GameDefine.AvatarMaskType.Lower);
             if (_isLocked)
                 return;
-            _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Idle, GameDefine.AvatarMaskType.Full);
+            _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.Move1D, AvatarMaskType.Base);
         }
 
         public void Stay()
@@ -38,7 +38,6 @@ namespace InGame.Component.Command
         public void UnLock()
         {
             _isLocked = false;
-            _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Idle, GameDefine.AvatarMaskType.Full);
         }
     }
 }

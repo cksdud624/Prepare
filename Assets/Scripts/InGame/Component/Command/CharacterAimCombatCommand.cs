@@ -30,7 +30,6 @@ namespace InGame.Component.Command
 
         public void Exit()
         {
-            _componentBank.AnimationPlayer.StopLayer(GameDefine.AvatarMaskType.Upper);
         }
     }
 }

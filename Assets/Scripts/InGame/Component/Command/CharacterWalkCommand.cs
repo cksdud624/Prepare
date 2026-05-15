@@ -19,7 +19,7 @@ namespace InGame.Component.Command
             _isLocked = isLocked;
             if (_isLocked)
                 return;
-            _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Walk, GameDefine.AvatarMaskType.Lower);
+           // _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Walk, GameDefine.AvatarMaskType.Base);
         }
 
         public void Stay()
@@ -58,7 +58,7 @@ namespace InGame.Component.Command
         public void UnLock()
         {
             _isLocked = false;
-            _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Walk, GameDefine.AvatarMaskType.Lower);
+            //_componentBank.AnimationPlayer.PlayAnimation(AnimationType.Walk, GameDefine.AvatarMaskType.Base);
         }
     }
 }

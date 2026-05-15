@@ -47,25 +47,26 @@ namespace Common
         #endregion
         
         #region Animation
+
+        public const int LayerCount = 2;
         public const float DefaultCrossFadeDuration = 0.1f;
         public enum AnimationType
         {
-            //전체
-            Idle,
-            Walk,
-            //하반신
-            
-            //상반신
             Fire,
             Aim,
             AimFire
         }
 
+        public enum BlendTreeType
+        {
+            Move1D,
+            AimMove2D
+        }
+
         public enum AvatarMaskType
         {
-            Full,
+            Base,
             Upper,
-            Lower,
         }
         
         #endregion

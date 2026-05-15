@@ -9,239 +9,165 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using AnimationType = Common.GameDefine.AnimationType;
-using LoadTarget = Common.AssetKeys.LoadTarget;
+using BlendTreeType = Common.GameDefine.BlendTreeType;
 using AvatarMaskType = Common.GameDefine.AvatarMaskType;
+using LoadTarget = Common.AssetKeys.LoadTarget;
 
 namespace InGame.Component.Module
 {
     public class AnimationPlayer : MonoBehaviour
     {
-        private class LayerState
-        {
-            public AnimationMixerPlayable Mixer;
-            public AnimationClipPlayable Slot0;
-            public AnimationClipPlayable Slot1;
-            public AnimationType? CurrentType;
-            public CancellationTokenSource CrossFadeCts;
-        }
-
         private InGameModel _inGameModel;
         private Animator _animator;
-        private Dictionary<AnimationType, AnimationClip> _animationClips = new();
+        private CharacterModel _characterModel;
+
+        private readonly HashSet<AnimationType> _customAnimationType = new();
+        private readonly HashSet<BlendTreeType> _customBlendTreeType = new();
+        private readonly Dictionary<AnimationType, AnimationClip> _animationClips = new();
+        private readonly Dictionary<BlendTreeType, RuntimeAnimatorController> _blendTrees = new();
 
         private PlayableGraph _graph;
         private AnimationLayerMixerPlayable _layerMixer;
-        private LayerState[] _layers;
-
+        private CancellationTokenSource _layerCancelToken;
+        
+        
         public async UniTask Init(InGameModel inGameModel, Animator animator, CharacterModel characterModel)
         {
-            _inGameModel = inGameModel;
             _animator = animator;
+            _characterModel = characterModel;
 
-            var characterData = characterModel.CharacterData;
-            HashSet<AnimationType> customAnimationType = new();
+            var characterData = _characterModel.CharacterData;
             if (!(characterData.CustomAnimation.Count == 1 && string.IsNullOrEmpty(characterData.CustomAnimation[0])))
             {
                 foreach (var custom in characterData.CustomAnimation)
                 {
                     if (Enum.TryParse<AnimationType>(custom, true, out var result))
-                        customAnimationType.Add(result);
+                        _customAnimationType.Add(result);
                     else
                         Debug.LogError("Custom Animation Type not found: " + custom);
                 }
             }
 
             var assetManager = Global.Instance.AssetManager;
+            string key;
             foreach (AnimationType type in Enum.GetValues(typeof(AnimationType)))
             {
-                string key = customAnimationType.Contains(type)
-                    ? $"{characterData.Id}_{type}"
-                    : $"default_{type}";
-
+                key = _customAnimationType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
                 var clip = await assetManager.LoadAssetAsync<AnimationClip>(LoadTarget.AnimationClip, key);
-                if (clip != null)
-                    _animationClips[type] = clip;
+                if (clip != null) _animationClips[type] = clip;
             }
 
-            var lowerMask = await assetManager.LoadAssetAsync<AvatarMask>(LoadTarget.AvatarMask, "lower");
-            var upperMask = await assetManager.LoadAssetAsync<AvatarMask>(LoadTarget.AvatarMask, "upper");
+            foreach (BlendTreeType type in Enum.GetValues(typeof(BlendTreeType)))
+            {
+                key = _customBlendTreeType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
+                var tree = await assetManager.LoadAssetAsync<RuntimeAnimatorController>(LoadTarget.BlendTree, key);
+                if (tree != null) _blendTrees[type] = tree;
+            }
+
+            var upperMask = await assetManager.LoadAssetAsync<AvatarMask>(LoadTarget.AvatarMask, nameof(AvatarMaskType.Upper));
 
             _graph = PlayableGraph.Create($"AnimationPlayer_{gameObject.name}");
             _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-
             var output = AnimationPlayableOutput.Create(_graph, "Animation", _animator);
 
-            // Layer 0: Full body (base), Layer 1: Lower body override, Layer 2: Upper body override
-            _layerMixer = AnimationLayerMixerPlayable.Create(_graph, 3);
+            int layerCount = GameDefine.LayerCount;
+            _layerMixer = AnimationLayerMixerPlayable.Create(_graph, layerCount);
             output.SetSourcePlayable(_layerMixer);
 
-            _layers = new LayerState[3];
-            for (int i = 0; i < 3; i++)
-            {
-                _layers[i] = new LayerState();
-                _layers[i].Mixer = AnimationMixerPlayable.Create(_graph, 2);
-                _layerMixer.ConnectInput(i, _layers[i].Mixer, 0, 0f);
-            }
-
-            if (lowerMask != null)
-                _layerMixer.SetLayerMaskFromAvatarMask((uint)ToLayerIndex(AvatarMaskType.Lower), lowerMask);
             if (upperMask != null)
-                _layerMixer.SetLayerMaskFromAvatarMask((uint)ToLayerIndex(AvatarMaskType.Upper), upperMask);
+                _layerMixer.SetLayerMaskFromAvatarMask(1, upperMask);
+            
+            _layerMixer.SetInputWeight(0, 1);
+            _layerMixer.SetInputWeight(1, 0);
 
             _graph.Play();
         }
 
-        public void PlayAnimation(AnimationType animationType, AvatarMaskType maskType, float crossFadeDuration = GameDefine.DefaultCrossFadeDuration, float playDuration = 0f)
+        public void PlayAnimation(AnimationType type, AvatarMaskType maskType, float? playDuration = null)
         {
-            if (!_animationClips.TryGetValue(animationType, out var clip))
+            if (!_animationClips.TryGetValue(type, out var clip))
             {
-                Debug.LogWarning($"AnimationClip not found: {animationType}");
+                Debug.LogError($"AnimationClip not found: {type}");
                 return;
             }
+            
+            var clipPlayable = AnimationClipPlayable.Create(_graph, clip);
+            if(playDuration.HasValue)
+                clipPlayable.SetSpeed(clip.length / playDuration.Value);
 
-            int idx = ToLayerIndex(maskType);
-            var layer = _layers[idx];
-
-            if (!layer.Slot0.IsValid())
+            if (maskType == AvatarMaskType.Upper)
             {
-                layer.Slot0 = AnimationClipPlayable.Create(_graph, clip);
-                ApplyPlayDuration(layer.Slot0, clip, playDuration);
-                layer.Mixer.ConnectInput(0, layer.Slot0, 0, 1f);
-                layer.CurrentType = animationType;
-                _layerMixer.SetInputWeight(idx, 1f);
+                CrossFadeLayer((int)maskType, 1).Forget();
+            }
+        }
+
+        public void PlayBlendTree(BlendTreeType type, AvatarMaskType maskType)
+        {
+            if (!_blendTrees.TryGetValue(type, out var blendTree))
+            {
+                Debug.LogError($"BlendTree not found: {type}");
                 return;
             }
-
-            if (layer.CurrentType == animationType)
-                return;
-
-            layer.CurrentType = animationType;
-            _layerMixer.SetInputWeight(idx, 1f);
-            CrossFadeAsync(idx, clip, crossFadeDuration, playDuration).Forget();
+            
+            var blendTreePlayable = AnimatorControllerPlayable.Create(_graph, blendTree);
+            blendTreePlayable.SetFloat("Move1", 1);
+            _graph.Connect(blendTreePlayable, 0, _layerMixer, 0);
         }
 
-        public void StopLayer(AvatarMaskType maskType, float fadeDuration = GameDefine.DefaultCrossFadeDuration)
+        private async UniTask CrossFadeLayer(int layerIndex, float targetWeight, float duration = 0.1f)
         {
-            FadeOutLayerAsync(ToLayerIndex(maskType), fadeDuration).Forget();
-        }
-
-        private static int ToLayerIndex(AvatarMaskType maskType) => maskType switch
-        {
-            AvatarMaskType.Full => 0,
-            AvatarMaskType.Lower => 1,
-            AvatarMaskType.Upper => 2,
-            _ => 0
-        };
-
-        private static void ApplyPlayDuration(AnimationClipPlayable playable, AnimationClip clip, float playDuration)
-        {
-            if (playDuration > 0f)
-                playable.SetSpeed(clip.length / playDuration);
-        }
-
-        private async UniTaskVoid CrossFadeAsync(int idx, AnimationClip clip, float duration, float playDuration)
-        {
-            var layer = _layers[idx];
-            layer.CrossFadeCts?.Cancel();
-            layer.CrossFadeCts?.Dispose();
-            layer.CrossFadeCts = new CancellationTokenSource();
-            var token = CancellationTokenSource.CreateLinkedTokenSource(
-                layer.CrossFadeCts.Token, this.GetCancellationTokenOnDestroy()).Token;
-
-            if (layer.Slot1.IsValid())
+            _layerCancelToken?.Cancel();
+            _layerCancelToken = new CancellationTokenSource();
+            var token = _layerCancelToken.Token;
+            
+            if (duration <= 0f)
             {
-                layer.Mixer.DisconnectInput(1);
-                layer.Slot1.Destroy();
-                layer.Slot1 = default;
+                _layerMixer.SetInputWeight(layerIndex, targetWeight);
+                return;
             }
-            layer.Mixer.SetInputWeight(0, 1f);
-
-            var nextPlayable = AnimationClipPlayable.Create(_graph, clip);
-            ApplyPlayDuration(nextPlayable, clip, playDuration);
-            layer.Mixer.ConnectInput(1, nextPlayable, 0, 0f);
-            layer.Slot1 = nextPlayable;
-
-            float elapsed = 0f;
+            
+            var startWeight = _layerMixer.GetInputWeight(layerIndex);
+            var elapsed = 0f;
             try
             {
                 while (elapsed < duration)
                 {
                     elapsed += Time.deltaTime;
-                    float t = Mathf.Clamp01(elapsed / duration);
-                    layer.Mixer.SetInputWeight(0, 1f - t);
-                    layer.Mixer.SetInputWeight(1, t);
+                    _layerMixer.SetInputWeight(layerIndex, Mathf.Lerp(startWeight, targetWeight, Mathf.Clamp01(elapsed / duration)));
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
             }
             catch (OperationCanceledException)
             {
-                return;
+                
             }
 
-            layer.Mixer.SetInputWeight(0, 0f);
-            layer.Mixer.SetInputWeight(1, 1f);
 
-            layer.Mixer.DisconnectInput(0);
-            layer.Slot0.Destroy();
-            layer.Mixer.DisconnectInput(1);
-
-            layer.Mixer.ConnectInput(0, nextPlayable, 0, 1f);
-            layer.Slot0 = nextPlayable;
-            layer.Slot1 = default;
         }
-
-        private async UniTaskVoid FadeOutLayerAsync(int idx, float duration)
-        {
-            var layer = _layers[idx];
-            layer.CrossFadeCts?.Cancel();
-            layer.CrossFadeCts?.Dispose();
-            layer.CrossFadeCts = new CancellationTokenSource();
-            var token = CancellationTokenSource.CreateLinkedTokenSource(
-                layer.CrossFadeCts.Token, this.GetCancellationTokenOnDestroy()).Token;
-
-            float startWeight = _layerMixer.GetInputWeight(idx);
-            float elapsed = 0f;
-            try
-            {
-                while (elapsed < duration)
-                {
-                    elapsed += Time.deltaTime;
-                    float t = Mathf.Clamp01(elapsed / duration);
-                    _layerMixer.SetInputWeight(idx, Mathf.Lerp(startWeight, 0f, t));
-                    await UniTask.Yield(PlayerLoopTiming.Update, token);
-                }
-            }
-            catch (OperationCanceledException) { return; }
-
-            _layerMixer.SetInputWeight(idx, 0f);
-            layer.CurrentType = null;
-
-            if (layer.Slot1.IsValid())
-            {
-                layer.Mixer.DisconnectInput(1);
-                layer.Slot1.Destroy();
-                layer.Slot1 = default;
-            }
-            if (layer.Slot0.IsValid())
-            {
-                layer.Mixer.DisconnectInput(0);
-                layer.Slot0.Destroy();
-                layer.Slot0 = default;
-            }
-        }
-
+        
         private void OnDestroy()
         {
-            if (_layers != null)
-            {
-                foreach (var layer in _layers)
-                {
-                    layer?.CrossFadeCts?.Cancel();
-                    layer?.CrossFadeCts?.Dispose();
-                }
-            }
             if (_graph.IsValid())
                 _graph.Destroy();
+
+            var assetManager = Global.Instance?.AssetManager;
+            if (assetManager == null) return;
+
+            assetManager.ReleaseAsset<AvatarMask>(LoadTarget.AvatarMask, nameof(AvatarMaskType.Upper));
+
+            var characterData = _characterModel.CharacterData;
+            string key;
+            foreach (AnimationType type in Enum.GetValues(typeof(AnimationType)))
+            {
+                key = _customAnimationType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
+                assetManager.ReleaseAsset<AnimationClip>(LoadTarget.AnimationClip, key);
+            }
+
+            foreach (BlendTreeType type in Enum.GetValues(typeof(BlendTreeType)))
+            {
+                key = _customBlendTreeType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
+                assetManager.ReleaseAsset<RuntimeAnimatorController>(LoadTarget.BlendTree, key);
+            }
         }
     }
 }

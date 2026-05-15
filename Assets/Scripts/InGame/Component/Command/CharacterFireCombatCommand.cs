@@ -11,7 +11,7 @@ namespace InGame.Component.Command
     {
         public CombatCommandType CommandType { get; } = CombatCommandType.Fire;
         public bool IsCombatLock { get; } = true;
-        public MoveCommandGroup[] LockedMoveGroups { get; } = { MoveCommandGroup.Locomotion };
+        public MoveCommandGroup[] LockedMoveGroups { get; } = null;
         public event Action<ICombatCommand> OnFinished;
 
         private ComponentBank _componentBank;
@@ -53,7 +53,7 @@ namespace InGame.Component.Command
 
         public void Exit()
         {
-            _componentBank.AnimationPlayer.StopLayer(GameDefine.AvatarMaskType.Upper);
+            //_componentBank.AnimationPlayer.StopAnimation(GameDefine.AvatarMaskType.Upper);
         }
 
         private void Finish()
