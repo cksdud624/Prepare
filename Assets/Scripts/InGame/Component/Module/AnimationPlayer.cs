@@ -42,6 +42,8 @@ namespace InGame.Component.Module
         private PlayableGraph _graph;
         private AnimationLayerMixerPlayable _layerMixer;
         private CancellationTokenSource _layerCancelToken;
+
+        private CancellationTokenSource _parameterCancelToken;
         //혹시라도 레이어가 추가되면 각 레이어들이 사용되고 있는지를 각각 관리해야함(리스트?)
         
         
@@ -119,7 +121,7 @@ namespace InGame.Component.Module
             }
             
             var clipPlayable = AnimationClipPlayable.Create(_graph, clip);
-            if(playDuration.HasValue)
+            if(playDuration.HasValue && playDuration.Value != 0f)
                 clipPlayable.SetSpeed(clip.length / playDuration.Value);
 
             CrossFadeAnimation(_layerStates[maskType], clipPlayable).Forget();
@@ -142,6 +144,101 @@ namespace InGame.Component.Module
             CrossFadeAnimation(_layerStates[maskType], blendTreePlayable).Forget();
         }
 
+        public void SetParameter(AvatarMaskType maskType, float value, bool isLerp = true)
+        {
+            if (!TryGetControllerPlayable(maskType, out var playable)) return;
+
+            if (isLerp)
+                LerpParameter(playable, value).Forget();
+            else
+                playable.SetFloat(GameDefine.Parameter1, value);
+        }
+
+        public void SetParameter(AvatarMaskType maskType, Vector2 value, bool isLerp = true)
+        {
+            if (!TryGetControllerPlayable(maskType, out var playable)) return;
+
+            if (isLerp)
+                LerpParameter(playable, value).Forget();
+            else
+            {
+                playable.SetFloat(GameDefine.Parameter1, value.x);
+                playable.SetFloat(GameDefine.Parameter2, value.y);
+            }
+        }
+
+        private bool TryGetControllerPlayable(AvatarMaskType maskType, out AnimatorControllerPlayable playable)
+        {
+            var activePlayable = _layerStates[maskType].Ports[_layerStates[maskType].PreviousPort];
+            if (activePlayable.IsValid() && activePlayable.IsPlayableOfType<AnimatorControllerPlayable>())
+            {
+                playable = (AnimatorControllerPlayable)activePlayable;
+                return true;
+            }
+            Debug.Log("Playable is not BlendTree");
+            playable = default;
+            return false;
+        }
+
+        private async UniTask LerpParameter(AnimatorControllerPlayable controllerPlayable, float value, float lerpDuration = 0.1f)
+        {
+            _parameterCancelToken?.Cancel();
+            _parameterCancelToken = new CancellationTokenSource();
+            if (lerpDuration <= 0f)
+            {
+                controllerPlayable.SetFloat(GameDefine.Parameter1, value);
+                return;
+            }
+
+            float elapsed = 0f;
+            float start = controllerPlayable.GetFloat(GameDefine.Parameter1);
+            try
+            {
+                while (elapsed < lerpDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    controllerPlayable.SetFloat(GameDefine.Parameter1, Mathf.Lerp(start, value, Mathf.Clamp01(elapsed / lerpDuration)));
+                    await UniTask.Yield(PlayerLoopTiming.Update, _parameterCancelToken.Token);
+                }
+                controllerPlayable.SetFloat(GameDefine.Parameter1, value);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        private async UniTask LerpParameter(AnimatorControllerPlayable controllerPlayable, Vector2 value, float lerpDuration = 0.1f)
+        {
+            _parameterCancelToken?.Cancel();
+            _parameterCancelToken = new CancellationTokenSource();
+            if (lerpDuration <= 0f)
+            {
+                controllerPlayable.SetFloat(GameDefine.Parameter1, value.x);
+                controllerPlayable.SetFloat(GameDefine.Parameter2, value.y);
+                return;
+            }
+
+            float elapsed = 0f;
+            float start1 = controllerPlayable.GetFloat(GameDefine.Parameter1);
+            float start2 = controllerPlayable.GetFloat(GameDefine.Parameter2);
+            try
+            {
+                while (elapsed < lerpDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / lerpDuration);
+                    controllerPlayable.SetFloat(GameDefine.Parameter1, Mathf.Lerp(start1, value.x, t));
+                    controllerPlayable.SetFloat(GameDefine.Parameter2, Mathf.Lerp(start2, value.y, t));
+                    await UniTask.Yield(PlayerLoopTiming.Update, _parameterCancelToken.Token);
+                }
+                controllerPlayable.SetFloat(GameDefine.Parameter1, value.x);
+                controllerPlayable.SetFloat(GameDefine.Parameter2, value.y);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
         public void StopAnimation(AvatarMaskType maskType)
         {
             if (maskType != AvatarMaskType.Upper) return;
@@ -158,6 +255,7 @@ namespace InGame.Component.Module
         {
             var state = _layerStates[AvatarMaskType.Upper];
             state.CrossFadeCancelToken?.Cancel();
+            _parameterCancelToken?.Cancel();
 
             for (int i = 0; i < state.Ports.Count; i++)
             {
@@ -178,6 +276,7 @@ namespace InGame.Component.Module
         {
             state.CrossFadeCancelToken?.Cancel();
             state.CrossFadeCancelToken = new CancellationTokenSource();
+            _parameterCancelToken?.Cancel();
 
             int previousPort = state.PreviousPort;
             int targetPort = state.TargetPort;
@@ -201,9 +300,9 @@ namespace InGame.Component.Module
                 while (elapsed < crossFadeDuration)
                 {
                     elapsed += Time.deltaTime;
-                    float t = Mathf.Clamp01(elapsed / crossFadeDuration);
-                    state.Mixer.SetInputWeight(targetPort, Mathf.Lerp(startWeight, 1f, t));
-                    state.Mixer.SetInputWeight(previousPort, Mathf.Lerp(previousWeight, 0f, t));
+                    float progress = Mathf.Clamp01(elapsed / crossFadeDuration);
+                    state.Mixer.SetInputWeight(targetPort, Mathf.Lerp(startWeight, 1f, progress));
+                    state.Mixer.SetInputWeight(previousPort, Mathf.Lerp(previousWeight, 0f, progress));
                     await UniTask.Yield(PlayerLoopTiming.Update, state.CrossFadeCancelToken.Token);
                 }
                 state.Mixer.SetInputWeight(targetPort, 1f);
@@ -226,15 +325,16 @@ namespace InGame.Component.Module
                 return;
             }
             
-            var startWeight = _layerMixer.GetInputWeight(layerIndex);
-            var elapsed = 0f;
+            float startWeight = _layerMixer.GetInputWeight(layerIndex);
+            float elapsed = 0f;
+            
             try
             {
                 while (elapsed < crossFadeDuration)
                 {
                     elapsed += Time.deltaTime;
-                    float t = Mathf.Clamp01(elapsed / crossFadeDuration);
-                    _layerMixer.SetInputWeight(layerIndex, Mathf.Lerp(startWeight, targetWeight, t));
+                    float progress = Mathf.Clamp01(elapsed / crossFadeDuration);
+                    _layerMixer.SetInputWeight(layerIndex, Mathf.Lerp(startWeight, targetWeight, progress));
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
                 _layerMixer.SetInputWeight(layerIndex, targetWeight);
@@ -253,6 +353,9 @@ namespace InGame.Component.Module
             {
                 layerState.Value.CrossFadeCancelToken?.Cancel();
             }
+            
+            _layerCancelToken?.Cancel();
+            _parameterCancelToken?.Cancel();
 
             var assetManager = Global.Instance?.AssetManager;
             if (assetManager == null) return;

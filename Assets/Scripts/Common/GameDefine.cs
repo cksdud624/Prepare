@@ -28,14 +28,14 @@ namespace Common
 
         public enum MoveCommandType
         {
-            Idle,
-            Walk,
+            Move,
+            AimMove
         }
 
         public enum CombatCommandType
         {
             Fire,
-            Aim
+            Zoom
         }
 
         public static readonly Vector3 DefaultPlayerSight = new (0, 1.6f, 0);
@@ -47,7 +47,8 @@ namespace Common
         #endregion
         
         #region Animation
-        
+        public static readonly int Parameter1 = Animator.StringToHash("Parameter1");
+        public static readonly int Parameter2 = Animator.StringToHash("Parameter2");
         public const float DefaultCrossFadeDuration = 0.1f;
         public enum AnimationType
         {
@@ -75,7 +76,7 @@ namespace Common
         public enum CombatState
         {
             Standard,
-            Aim,
+            Zoom
         }
 
         public enum WeaponType
@@ -85,6 +86,11 @@ namespace Common
             Pistol,
             Melee
         }
+        #endregion
+        
+        #region Move
+        public const float DefaultMoveSpeed = 1f;
+        public const float DefaultRunSpeed = 2f;
         #endregion
         
         #region Rotation

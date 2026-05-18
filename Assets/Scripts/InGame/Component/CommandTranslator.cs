@@ -32,11 +32,12 @@ namespace InGame.Component
             _inputHub.OnMove += OnMove;
             _inputHub.OnLeftClick += OnLeftClick;
             _inputHub.OnRightClick += OnRightClick;
+            _inputHub.OnShiftClick += OnShiftClick;
             
             Global.Instance.BindUpdate(this);
             Global.Instance.BindFixedUpdate(this);
 
-            PlayCommand(MoveCommandType.Idle);
+            PlayCommand(MoveCommandType.Move);
             await UniTask.CompletedTask;
         }
 
@@ -44,22 +45,41 @@ namespace InGame.Component
 
         private void OnMove(Vector2 direction)
         {
-            PlayCommand(direction == Vector2.zero ? MoveCommandType.Idle : MoveCommandType.Walk);
+            _componentBank.CharacterModel.MoveDirection.Value = direction;
+            foreach (var moveCommand in _moveCommands)
+            {
+                if (moveCommand.CommandType == MoveCommandType.Move)
+                    return;
+            }
+            PlayCommand(MoveCommandType.Move);
         }
 
-        public void OnLeftClick(bool isClick)
+        private void OnLeftClick(bool isClick)
         {
-            if(isClick)
-                PlayCommand(CombatCommandType.Fire);
+            return;
         }
 
-        public void OnRightClick(bool isClick)
+        private void OnRightClick(bool isClick)
         {
-            var characterModel = _componentBank.CharacterModel;
-            if (isClick && characterModel.CombatState is CombatState.Standard)
-                PlayCommand(CombatCommandType.Aim);
-            else if(isClick && characterModel.CombatState is CombatState.Aim)
-                Debug.Log("아잇!");
+            if (!isClick)
+                return;
+            
+            
+            foreach (var command in _combatCommands)
+            {
+                if (command.CommandType == CombatCommandType.Zoom)
+                {
+                    command.Exit();
+                    _combatCommands.Remove(command);
+                    return;
+                }
+            }
+            PlayCommand(CombatCommandType.Zoom);
+        }
+
+        private void OnShiftClick(bool isClick)
+        {
+            _componentBank.CharacterModel.IsRun.Value = isClick;
         }
 
         public void OnUpdate()
@@ -107,8 +127,7 @@ namespace InGame.Component
         {
             IMoveCommand newCommand = moveCommandType switch
             {
-                MoveCommandType.Idle => new CharacterIdleMoveCommand(),
-                MoveCommandType.Walk => new CharacterWalkMoveCommand(),
+                MoveCommandType.Move => new CharacterMoveMoveCommand(),
                 _ => null
             };
 
@@ -118,24 +137,20 @@ namespace InGame.Component
                 return;
             }
 
-            bool isLocked = false;
             if (newCommand.MoveCommandsGroup.HasValue)
             {
-                for (int i = _moveCommands.Count - 1; i >= 0; i--)
+                foreach (var command in _moveCommands)
                 {
-                    if (_moveCommands[i].MoveCommandsGroup == newCommand.MoveCommandsGroup)
+                    if (newCommand.MoveCommandsGroup == command.MoveCommandsGroup)
                     {
-                        _moveCommands[i].Exit();
-                        _moveCommands.RemoveAt(i);
+                        command.Exit();
+                        _moveCommands.Remove(command);
+                        break;
                     }
                 }
-
-                if (_lockedMoveGroups.ContainsKey(newCommand.MoveCommandsGroup.Value))
-                    isLocked = true;
             }
-
             _moveCommands.Add(newCommand);
-            newCommand.Entry(_componentBank, isLocked);
+            newCommand.Entry(_componentBank, false);
         }
 
         private void PlayCommand(CombatCommandType combatCommandType)
@@ -145,8 +160,7 @@ namespace InGame.Component
             
             ICombatCommand newCommand = combatCommandType switch
             {
-                CombatCommandType.Fire => new CharacterFireCombatCommand(),
-                CombatCommandType.Aim => new CharacterAimCombatCommand(),
+                CombatCommandType.Zoom => new CharacterZoomCombatCommand(),
                 _ => null
             };
 
@@ -158,7 +172,9 @@ namespace InGame.Component
             
             if (newCommand.IsCombatLock)
                 _isCombatLock = true;
-
+            
+            /*
+             일단 락기능은 비활성화
             if (newCommand.LockedMoveGroups is { Length: > 0 })
             {
                 foreach (var lockGroup in newCommand.LockedMoveGroups)
@@ -173,6 +189,7 @@ namespace InGame.Component
                     }
                 }
             }
+            */
 
             newCommand.OnFinished += OnCombatCommandFinished;
             _combatCommands.Add(newCommand);
@@ -181,6 +198,7 @@ namespace InGame.Component
 
         private void OnCombatCommandFinished(ICombatCommand command)
         {
+            /*
             if (command.LockedMoveGroups is { Length: > 0 })
             {
                 foreach (var lockGroup in command.LockedMoveGroups)
@@ -194,7 +212,8 @@ namespace InGame.Component
                     }
                 }
             }
-            
+            */
+            command.OnFinished -= OnCombatCommandFinished;
             _removePending.Add(command);
         }
 
@@ -202,7 +221,17 @@ namespace InGame.Component
         {
             Global.Instance?.UnBindUpdate(this);
             if (_inputHub != null)
+            {
                 _inputHub.OnMove -= OnMove;
+                _inputHub.OnLeftClick -= OnLeftClick;
+                _inputHub.OnRightClick -= OnRightClick;
+                _inputHub.OnShiftClick -= OnShiftClick;
+            }
+
+            foreach(var moveCommand in _moveCommands)
+                moveCommand.Exit();
+            foreach (var combatCommand in _combatCommands)
+                combatCommand.Exit();
         }
     }
 }

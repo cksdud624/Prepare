@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Common;
 using Generated.Table;
+using UniRx;
 using UnityEngine;
 using CombatState = Common.GameDefine.CombatState;
 
@@ -15,11 +17,12 @@ namespace InGame.Component.Model
         }
         
         public CharacterData CharacterData { get; private set; }
-
+        
+        #region Combat
         public IReadOnlyList<WeaponStatusData> WeaponStatusDataList { get; private set; }
         
         public WeaponStatusData CurrentWeapon { get; private set; }
-        public CombatState CombatState { get; set; } = CombatState.Standard;
+        public ReactiveProperty<CombatState> CombatState = new(GameDefine.CombatState.Standard);
 
         public void SetWeapon(int index)
         {
@@ -31,5 +34,11 @@ namespace InGame.Component.Model
             
             CurrentWeapon = WeaponStatusDataList[index];
         }
+        #endregion
+        
+        #region Move
+        public readonly ReactiveProperty<bool> IsRun = new ();
+        public readonly ReactiveProperty<Vector2> MoveDirection = new ();
+        #endregion
     }
 }

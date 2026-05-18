@@ -129,6 +129,15 @@ namespace InGame.Input
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Shift"",
+                    ""type"": ""Button"",
+                    ""id"": ""7ea55723-a3f3-413f-8ab3-dde75c2daeaf"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -219,6 +228,17 @@ namespace InGame.Input
                     ""action"": ""RightClick"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""c676cb14-9266-4d3a-aa18-f918b3f85204"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Shift"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -231,6 +251,7 @@ namespace InGame.Input
             m_Player_Drag = m_Player.FindAction("Drag", throwIfNotFound: true);
             m_Player_LeftClick = m_Player.FindAction("LeftClick", throwIfNotFound: true);
             m_Player_RightClick = m_Player.FindAction("RightClick", throwIfNotFound: true);
+            m_Player_Shift = m_Player.FindAction("Shift", throwIfNotFound: true);
         }
 
         ~@PlayerInputAction()
@@ -315,6 +336,7 @@ namespace InGame.Input
         private readonly InputAction m_Player_Drag;
         private readonly InputAction m_Player_LeftClick;
         private readonly InputAction m_Player_RightClick;
+        private readonly InputAction m_Player_Shift;
         /// <summary>
         /// Provides access to input actions defined in input action map "Player".
         /// </summary>
@@ -342,6 +364,10 @@ namespace InGame.Input
             /// Provides access to the underlying input action "Player/RightClick".
             /// </summary>
             public InputAction @RightClick => m_Wrapper.m_Player_RightClick;
+            /// <summary>
+            /// Provides access to the underlying input action "Player/Shift".
+            /// </summary>
+            public InputAction @Shift => m_Wrapper.m_Player_Shift;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -380,6 +406,9 @@ namespace InGame.Input
                 @RightClick.started += instance.OnRightClick;
                 @RightClick.performed += instance.OnRightClick;
                 @RightClick.canceled += instance.OnRightClick;
+                @Shift.started += instance.OnShift;
+                @Shift.performed += instance.OnShift;
+                @Shift.canceled += instance.OnShift;
             }
 
             /// <summary>
@@ -403,6 +432,9 @@ namespace InGame.Input
                 @RightClick.started -= instance.OnRightClick;
                 @RightClick.performed -= instance.OnRightClick;
                 @RightClick.canceled -= instance.OnRightClick;
+                @Shift.started -= instance.OnShift;
+                @Shift.performed -= instance.OnShift;
+                @Shift.canceled -= instance.OnShift;
             }
 
             /// <summary>
@@ -471,6 +503,13 @@ namespace InGame.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnRightClick(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Shift" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShift(InputAction.CallbackContext context);
         }
     }
 }

@@ -23,6 +23,8 @@ namespace InGame.Component.Controller
             _inputAction.Player.LeftClick.canceled += OnLeftRelease;
             _inputAction.Player.RightClick.performed += OnRightPress;
             _inputAction.Player.RightClick.canceled += OnRightRelease;
+            _inputAction.Player.Shift.performed += OnShiftPress;
+            _inputAction.Player.Shift.canceled += OnShiftRelease;
             
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
@@ -45,6 +47,8 @@ namespace InGame.Component.Controller
         private void OnLeftRelease(InputAction.CallbackContext context) => InputHub.NotifyLeftClick(false);
         private void OnRightPress(InputAction.CallbackContext context) => InputHub.NotifyRightClick(true);
         private void OnRightRelease(InputAction.CallbackContext context) => InputHub.NotifyRightClick(false);
+        private void OnShiftPress(InputAction.CallbackContext context) => InputHub.NotifyShiftClick(true);
+        private void OnShiftRelease(InputAction.CallbackContext context) => InputHub.NotifyShiftClick(false);
         #endregion
 
         private void OnDestroy()
