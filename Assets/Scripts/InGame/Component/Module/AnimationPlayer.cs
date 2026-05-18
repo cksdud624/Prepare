@@ -5,6 +5,7 @@ using Cysharp.Threading.Tasks;
 using Common;
 using InGame.Component.Model;
 using InGame.Model;
+using Newtonsoft.Json.Serialization;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
@@ -17,6 +18,17 @@ namespace InGame.Component.Module
 {
     public class AnimationPlayer : MonoBehaviour
     {
+        private class LayerState
+        {
+            private const int PortCapacity = 2;
+            public AvatarMaskType Layer;
+            public int TargetPort;
+            public AnimationMixerPlayable Mixer;
+            public List<Playable> Ports = new (PortCapacity) { default, default };
+            public CancellationTokenSource CrossFadeCancelToken;
+            public int PreviousPort => 1 - TargetPort;
+        }
+        
         private InGameModel _inGameModel;
         private Animator _animator;
         private CharacterModel _characterModel;
@@ -25,10 +37,12 @@ namespace InGame.Component.Module
         private readonly HashSet<BlendTreeType> _customBlendTreeType = new();
         private readonly Dictionary<AnimationType, AnimationClip> _animationClips = new();
         private readonly Dictionary<BlendTreeType, RuntimeAnimatorController> _blendTrees = new();
+        private readonly Dictionary<AvatarMaskType, LayerState> _layerStates = new();
 
         private PlayableGraph _graph;
         private AnimationLayerMixerPlayable _layerMixer;
         private CancellationTokenSource _layerCancelToken;
+        //혹시라도 레이어가 추가되면 각 레이어들이 사용되고 있는지를 각각 관리해야함(리스트?)
         
         
         public async UniTask Init(InGameModel inGameModel, Animator animator, CharacterModel characterModel)
@@ -64,21 +78,34 @@ namespace InGame.Component.Module
                 if (tree != null) _blendTrees[type] = tree;
             }
 
-            var upperMask = await assetManager.LoadAssetAsync<AvatarMask>(LoadTarget.AvatarMask, nameof(AvatarMaskType.Upper));
-
             _graph = PlayableGraph.Create($"AnimationPlayer_{gameObject.name}");
             _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
             var output = AnimationPlayableOutput.Create(_graph, "Animation", _animator);
 
-            int layerCount = GameDefine.LayerCount;
+            var layerCount = Enum.GetValues(typeof(AvatarMaskType)).Length;
             _layerMixer = AnimationLayerMixerPlayable.Create(_graph, layerCount);
             output.SetSourcePlayable(_layerMixer);
-
-            if (upperMask != null)
-                _layerMixer.SetLayerMaskFromAvatarMask(1, upperMask);
             
-            _layerMixer.SetInputWeight(0, 1);
-            _layerMixer.SetInputWeight(1, 0);
+            foreach (AvatarMaskType type in Enum.GetValues(typeof(AvatarMaskType)))
+            {
+                float weight = 1;
+                if (type != AvatarMaskType.Base)
+                {
+                    var mask = await assetManager.LoadAssetAsync<AvatarMask>(LoadTarget.AvatarMask, nameof(AvatarMaskType.Upper));
+                    if(mask != null)
+                        _layerMixer.SetLayerMaskFromAvatarMask((uint)type, mask);
+                    weight = 0;
+                }
+                _layerMixer.SetInputWeight((int)type, weight);
+
+                LayerState state = new ()
+                {
+                    Layer = type,
+                    Mixer = AnimationMixerPlayable.Create(_graph, 2)
+                };
+                _graph.Connect(state.Mixer, 0, _layerMixer, (int)type);
+                _layerStates.Add(type, state);
+            }
 
             _graph.Play();
         }
@@ -95,6 +122,8 @@ namespace InGame.Component.Module
             if(playDuration.HasValue)
                 clipPlayable.SetSpeed(clip.length / playDuration.Value);
 
+            CrossFadeAnimation(_layerStates[maskType], clipPlayable).Forget();
+
             if (maskType == AvatarMaskType.Upper)
             {
                 CrossFadeLayer((int)maskType, 1).Forget();
@@ -108,19 +137,90 @@ namespace InGame.Component.Module
                 Debug.LogError($"BlendTree not found: {type}");
                 return;
             }
-            
+
             var blendTreePlayable = AnimatorControllerPlayable.Create(_graph, blendTree);
-            blendTreePlayable.SetFloat("Move1", 1);
-            _graph.Connect(blendTreePlayable, 0, _layerMixer, 0);
+            CrossFadeAnimation(_layerStates[maskType], blendTreePlayable).Forget();
         }
 
-        private async UniTask CrossFadeLayer(int layerIndex, float targetWeight, float duration = 0.1f)
+        public void StopAnimation(AvatarMaskType maskType)
+        {
+            if (maskType != AvatarMaskType.Upper) return;
+            StopUpperLayer();
+        }
+
+        public void StopBlendTree(AvatarMaskType maskType)
+        {
+            if (maskType != AvatarMaskType.Upper) return;
+            StopUpperLayer();
+        }
+
+        private void StopUpperLayer()
+        {
+            var state = _layerStates[AvatarMaskType.Upper];
+            state.CrossFadeCancelToken?.Cancel();
+
+            for (int i = 0; i < state.Ports.Count; i++)
+            {
+                if (state.Ports[i].IsValid())
+                {
+                    _graph.Disconnect(state.Mixer, i);
+                    state.Ports[i].Destroy();
+                }
+                state.Ports[i] = default;
+                state.Mixer.SetInputWeight(i, 0f);
+            }
+            state.TargetPort = 0;
+
+            CrossFadeLayer((int)AvatarMaskType.Upper, 0).Forget();
+        }
+
+        private async UniTask CrossFadeAnimation(LayerState state, Playable nextPlayable, float crossFadeDuration = 0.1f)
+        {
+            state.CrossFadeCancelToken?.Cancel();
+            state.CrossFadeCancelToken = new CancellationTokenSource();
+
+            int previousPort = state.PreviousPort;
+            int targetPort = state.TargetPort;
+            state.TargetPort = previousPort;
+
+            if (state.Ports[targetPort].IsValid())
+            {
+                _graph.Disconnect(state.Mixer, targetPort);
+                state.Ports[targetPort].Destroy();
+            }
+
+            _graph.Connect(nextPlayable, 0, state.Mixer, targetPort);
+            state.Ports[targetPort] = nextPlayable;
+
+            float elapsed = 0f;
+            float startWeight = state.Mixer.GetInputWeight(targetPort);
+            float previousWeight = state.Mixer.GetInputWeight(previousPort);
+
+            try
+            {
+                while (elapsed < crossFadeDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / crossFadeDuration);
+                    state.Mixer.SetInputWeight(targetPort, Mathf.Lerp(startWeight, 1f, t));
+                    state.Mixer.SetInputWeight(previousPort, Mathf.Lerp(previousWeight, 0f, t));
+                    await UniTask.Yield(PlayerLoopTiming.Update, state.CrossFadeCancelToken.Token);
+                }
+                state.Mixer.SetInputWeight(targetPort, 1f);
+                state.Mixer.SetInputWeight(previousPort, 0f);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        private async UniTask CrossFadeLayer(int layerIndex, float targetWeight, float crossFadeDuration = 0.1f)
         {
             _layerCancelToken?.Cancel();
             _layerCancelToken = new CancellationTokenSource();
             var token = _layerCancelToken.Token;
             
-            if (duration <= 0f)
+            if (crossFadeDuration <= 0f)
             {
                 _layerMixer.SetInputWeight(layerIndex, targetWeight);
                 return;
@@ -130,19 +230,18 @@ namespace InGame.Component.Module
             var elapsed = 0f;
             try
             {
-                while (elapsed < duration)
+                while (elapsed < crossFadeDuration)
                 {
                     elapsed += Time.deltaTime;
-                    _layerMixer.SetInputWeight(layerIndex, Mathf.Lerp(startWeight, targetWeight, Mathf.Clamp01(elapsed / duration)));
+                    float t = Mathf.Clamp01(elapsed / crossFadeDuration);
+                    _layerMixer.SetInputWeight(layerIndex, Mathf.Lerp(startWeight, targetWeight, t));
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
+                _layerMixer.SetInputWeight(layerIndex, targetWeight);
             }
             catch (OperationCanceledException)
             {
-                
             }
-
-
         }
         
         private void OnDestroy()
@@ -150,10 +249,21 @@ namespace InGame.Component.Module
             if (_graph.IsValid())
                 _graph.Destroy();
 
+            foreach (var layerState in _layerStates)
+            {
+                layerState.Value.CrossFadeCancelToken?.Cancel();
+            }
+
             var assetManager = Global.Instance?.AssetManager;
             if (assetManager == null) return;
-
-            assetManager.ReleaseAsset<AvatarMask>(LoadTarget.AvatarMask, nameof(AvatarMaskType.Upper));
+            
+            foreach (AvatarMaskType type in Enum.GetValues(typeof(AvatarMaskType)))
+            {
+                if (type == AvatarMaskType.Base)
+                    continue;
+                
+                assetManager.ReleaseAsset<AvatarMask>(LoadTarget.AvatarMask, nameof(type));
+            }
 
             var characterData = _characterModel.CharacterData;
             string key;

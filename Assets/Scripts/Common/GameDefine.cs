@@ -47,8 +47,7 @@ namespace Common
         #endregion
         
         #region Animation
-
-        public const int LayerCount = 2;
+        
         public const float DefaultCrossFadeDuration = 0.1f;
         public enum AnimationType
         {
