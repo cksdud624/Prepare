@@ -33,6 +33,7 @@ namespace InGame.Component
             _inputHub.OnLeftClick += OnLeftClick;
             _inputHub.OnRightClick += OnRightClick;
             _inputHub.OnShiftClick += OnShiftClick;
+            _inputHub.OnSpaceClick += OnSpaceClick;
             
             Global.Instance.BindUpdate(this);
             Global.Instance.BindFixedUpdate(this);
@@ -42,7 +43,6 @@ namespace InGame.Component
         }
 
         #region Events
-
         private void OnMove(Vector2 direction)
         {
             _componentBank.CharacterModel.MoveDirection.Value = direction;
@@ -71,15 +71,24 @@ namespace InGame.Component
                 {
                     command.Exit();
                     _combatCommands.Remove(command);
+                    PlayCommand(MoveCommandType.Move);
                     return;
                 }
             }
             PlayCommand(CombatCommandType.Zoom);
+            PlayCommand(MoveCommandType.AimMove);
         }
 
         private void OnShiftClick(bool isClick)
         {
             _componentBank.CharacterModel.IsRun.Value = isClick;
+        }
+
+        private void OnSpaceClick(bool isClick)
+        {
+            if (!isClick)
+                return;
+            Debug.Log("점프");
         }
 
         public void OnUpdate()
@@ -128,6 +137,7 @@ namespace InGame.Component
             IMoveCommand newCommand = moveCommandType switch
             {
                 MoveCommandType.Move => new CharacterMoveMoveCommand(),
+                MoveCommandType.AimMove => new CharacterAimMoveMoveCommand(),
                 _ => null
             };
 
@@ -226,12 +236,8 @@ namespace InGame.Component
                 _inputHub.OnLeftClick -= OnLeftClick;
                 _inputHub.OnRightClick -= OnRightClick;
                 _inputHub.OnShiftClick -= OnShiftClick;
+                _inputHub.OnSpaceClick -= OnSpaceClick;
             }
-
-            foreach(var moveCommand in _moveCommands)
-                moveCommand.Exit();
-            foreach (var combatCommand in _combatCommands)
-                combatCommand.Exit();
         }
     }
 }

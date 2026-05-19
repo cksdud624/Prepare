@@ -281,18 +281,18 @@ namespace InGame.Component.Module
             int previousPort = state.PreviousPort;
             int targetPort = state.TargetPort;
             state.TargetPort = previousPort;
-
+            
+            
+            float startWeight = state.Mixer.GetInputWeight(targetPort);
             if (state.Ports[targetPort].IsValid())
             {
                 _graph.Disconnect(state.Mixer, targetPort);
                 state.Ports[targetPort].Destroy();
             }
-
             _graph.Connect(nextPlayable, 0, state.Mixer, targetPort);
-            state.Ports[targetPort] = nextPlayable;
-
+            state.Ports[targetPort] = nextPlayable; 
+            
             float elapsed = 0f;
-            float startWeight = state.Mixer.GetInputWeight(targetPort);
             float previousWeight = state.Mixer.GetInputWeight(previousPort);
 
             try

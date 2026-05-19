@@ -25,9 +25,11 @@ namespace InGame.Component.Hub
         public event Action<bool> OnLeftClick;
         public event Action<bool> OnRightClick;
         public event Action<bool> OnShiftClick;
+        public event Action<bool> OnSpaceClick;
         public void NotifyLeftClick(bool isClick) => OnLeftClick?.Invoke(isClick);
         public void NotifyRightClick(bool isClick) => OnRightClick?.Invoke(isClick);
         public void NotifyShiftClick(bool isClick) => OnShiftClick?.Invoke(isClick);
+        public void NotifySpaceClick(bool isClick) => OnSpaceClick?.Invoke(isClick);
 
         public void Dispose()
         {
@@ -36,6 +38,7 @@ namespace InGame.Component.Hub
             OnLeftClick = null;
             OnRightClick = null;
             OnShiftClick = null;
+            OnSpaceClick = null;
         }
     }
 }

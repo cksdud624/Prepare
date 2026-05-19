@@ -22,7 +22,7 @@ namespace InGame.Component.Model
         public IReadOnlyList<WeaponStatusData> WeaponStatusDataList { get; private set; }
         
         public WeaponStatusData CurrentWeapon { get; private set; }
-        public ReactiveProperty<CombatState> CombatState = new(GameDefine.CombatState.Standard);
+        public readonly ReactiveProperty<CombatState> CombatState = new(GameDefine.CombatState.Standard);
 
         public void SetWeapon(int index)
         {
@@ -38,7 +38,8 @@ namespace InGame.Component.Model
         
         #region Move
         public readonly ReactiveProperty<bool> IsRun = new ();
-        public readonly ReactiveProperty<Vector2> MoveDirection = new ();
+        public readonly ReactiveProperty<Vector2> MoveDirection = new ();   
+        public readonly ReactiveProperty<bool> IsLand = new ();
         #endregion
     }
 }

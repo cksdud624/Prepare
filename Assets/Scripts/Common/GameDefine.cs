@@ -26,18 +26,6 @@ namespace Common
             Error
         }
 
-        public enum MoveCommandType
-        {
-            Move,
-            AimMove
-        }
-
-        public enum CombatCommandType
-        {
-            Fire,
-            Zoom
-        }
-
         public static readonly Vector3 DefaultPlayerSight = new (0, 1.6f, 0);
         
         #region Collider
@@ -52,9 +40,14 @@ namespace Common
         public const float DefaultCrossFadeDuration = 0.1f;
         public enum AnimationType
         {
-            Fire,
-            Aim,
-            AimFire
+            //점프 애니메이션
+            Jump,
+            Fall,
+            Land,
+            //조준 점프 애니메이션
+            AimJump,
+            AimFall,
+            AimLand
         }
 
         public enum BlendTreeType
@@ -72,6 +65,10 @@ namespace Common
         #endregion
         
         #region Combat
+        public enum CombatCommandType
+        {
+            Zoom
+        }
 
         public enum CombatState
         {
@@ -89,11 +86,21 @@ namespace Common
         #endregion
         
         #region Move
+        public enum MoveCommandType
+        {
+            Move,
+            Jump,
+            AimMove,
+            AimJump,
+        }
+        
         public const float DefaultMoveSpeed = 1f;
         public const float DefaultRunSpeed = 2f;
         #endregion
         
         #region Rotation
+
+        public const float DefaultEntryRotationTime = 0.1f;
         public const float DefaultRotationSpeed = 10f;
         public const float DefaultDragRotationSensitivity = 0.1f;
         public const float DefaultCameraPitchMin = -60f;

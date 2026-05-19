@@ -27,7 +27,6 @@ namespace InGame.Component.Command
             }
 
             _componentBank.CharacterModel.CombatState.Value = CombatState.Zoom;
-            _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.AimMove2D, AvatarMaskType.Base);
         }
 
         public void Stay()
@@ -41,7 +40,6 @@ namespace InGame.Component.Command
         public void Exit()
         {
             _componentBank.CharacterModel.CombatState.Value = CombatState.Standard;
-            _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.Move1D, AvatarMaskType.Base);
         }
     }
 }
