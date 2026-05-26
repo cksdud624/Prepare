@@ -1,4 +1,4 @@
-using System;
+using System.Threading;
 using Common;
 using Cysharp.Threading.Tasks;
 using InGame.Component.Hub;
@@ -17,11 +17,13 @@ namespace InGame.Component.Module
         private InputHub _inputHub;
         private CharacterModel _characterModel;
         private CinemachineCamera _cinemachineCamera;
+        private CinemachineThirdPersonFollow _thirdPersonFollow;
         private GameObject _playerSight;
+        private GameObject _aimTarget;
         private float _pitch;
         private float _yaw;
-        
-        private IDisposable _combatStateDisposable;
+
+        private CancellationTokenSource _cameraLerpCts;
 
         public async UniTask Init(InGameModel inGameModel, InputHub inputHub, CharacterModel characterModel)
         {
@@ -29,13 +31,22 @@ namespace InGame.Component.Module
             _inputHub = inputHub;
             _characterModel = characterModel;
             _inputHub.OnDrag += OnDrag;
+
             _playerSight = new GameObject("PlayerSight");
+            _playerSight.transform.SetParent(transform);
+            _playerSight.transform.localPosition = GameDefine.DefaultPlayerSight;
             _playerSight.transform.rotation = Quaternion.identity;
+
+            _aimTarget = new GameObject("AimTarget");
+            _aimTarget.transform.SetParent(_playerSight.transform);
+            _aimTarget.transform.localPosition = new Vector3(0f, 0f, 100f);
+            _aimTarget.transform.localRotation = Quaternion.identity;
+
             OnCombatStateChanged(_characterModel.CombatState.Value);
             _characterModel.CombatState.Subscribe(OnCombatStateChanged);
             await UniTask.CompletedTask;
         }
-        
+
         #region Events
         private void OnDrag(Vector2 drag)
         {
@@ -47,16 +58,13 @@ namespace InGame.Component.Module
 
         private void OnCombatStateChanged(CombatState combatState)
         {
-            //카메라 줌
-            switch(combatState)
+            switch (combatState)
             {
-                case  CombatState.Standard:
-                    _playerSight.transform.SetParent(transform);
-                    _playerSight.transform.localPosition = GameDefine.DefaultPlayerSight;
+                case CombatState.Standard:
+                    LerpCamera(GameDefine.DefaultCameraDistance, 0f).Forget();
                     break;
                 case CombatState.Zoom:
-                    if (_cinemachineCamera == null)
-                        break;
+                    LerpCamera(GameDefine.DefaultZoomCameraDistance, GameDefine.DefaultZoomCameraShoulderOffsetX).Forget();
                     break;
                 default:
                     Debug.LogError($"CombatState is not implemented {combatState}");
@@ -69,18 +77,53 @@ namespace InGame.Component.Module
         {
             _cinemachineCamera = cinemachineCamera;
             _cinemachineCamera.Follow = _playerSight.transform;
+            _cinemachineCamera.LookAt = _aimTarget.transform;
+            _thirdPersonFollow = _cinemachineCamera.GetComponent<CinemachineThirdPersonFollow>();
         }
 
         public void DetachCamera()
         {
             _cinemachineCamera.Follow = null;
+            _cinemachineCamera.LookAt = null;
             _cinemachineCamera = null;
         }
 
-        public Vector3 GetForward() => Vector3.ProjectOnPlane(_cinemachineCamera.transform.forward, Vector3.up).normalized;
-        
+        public Vector3 GetForward() => Vector3.ProjectOnPlane(_playerSight.transform.forward, Vector3.up).normalized;
+
+        private async UniTaskVoid LerpCamera(float targetDistance, float targetShoulderX)
+        {
+            _cameraLerpCts?.Cancel();
+            _cameraLerpCts = new CancellationTokenSource();
+            var token = _cameraLerpCts.Token;
+
+            if (_thirdPersonFollow == null)
+                return;
+
+            float startDistance = _thirdPersonFollow.CameraDistance;
+            float startShoulderX = _thirdPersonFollow.ShoulderOffset.x;
+
+            float elapsed = 0f;
+            try
+            {
+                while (elapsed < GameDefine.DefaultCameraLerpTime)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.Clamp01(elapsed / GameDefine.DefaultCameraLerpTime);
+
+                    _thirdPersonFollow.CameraDistance = Mathf.Lerp(startDistance, targetDistance, t);
+                    var offset = _thirdPersonFollow.ShoulderOffset;
+                    offset.x = Mathf.Lerp(startShoulderX, targetShoulderX, t);
+                    _thirdPersonFollow.ShoulderOffset = offset;
+
+                    await UniTask.Yield(PlayerLoopTiming.Update, token);
+                }
+            }
+            catch (System.OperationCanceledException) { }
+        }
+
         private void OnDestroy()
         {
+            _cameraLerpCts?.Cancel();
             if (_inputHub != null)
                 _inputHub.OnDrag -= OnDrag;
             _characterModel?.CombatState.Dispose();

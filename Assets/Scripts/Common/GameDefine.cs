@@ -108,6 +108,10 @@ namespace Common
         
         #region Rotation
 
+        public const float DefaultCameraDistance = 3f;
+        public const float DefaultZoomCameraDistance = 2f;
+        public const float DefaultZoomCameraShoulderOffsetX = 0.5f;
+        public const float DefaultCameraLerpTime = 0.1f;
         public const float DefaultEntryRotationTime = 0.1f;
         public const float DefaultRotationSpeed = 10f;
         public const float DefaultDragRotationSensitivity = 0.1f;
