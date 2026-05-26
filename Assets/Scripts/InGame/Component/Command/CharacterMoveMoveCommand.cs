@@ -12,12 +12,22 @@ namespace InGame.Component.Command
     {
         public MoveCommandType CommandType { get; } = MoveCommandType.Move;
         public MoveCommandGroup? MoveCommandsGroup { get; } = MoveCommandGroup.Locomotion;
+
+        public void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer)
+        {
+            _onMoveCommandFinished = onFinished;
+        }
+
         private ComponentBank _componentBank;
-        
+        private Action<IMoveCommand> _onMoveCommandFinished;
+
         private IDisposable _moveDirectionDisposable;
         private Vector2 _moveDirection;
         private IDisposable _runDisposable;
         private bool _isRun;
+        private IDisposable _isLandDisposable;
+        private bool _isLand;
+        private float _fallingElapsed;
         
         public void Entry(ComponentBank componentBank, bool isLocked)
         {
@@ -27,40 +37,61 @@ namespace InGame.Component.Command
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
             _isRun = _componentBank.CharacterModel.IsRun.Value;
             _runDisposable = _componentBank.CharacterModel.IsRun.Subscribe(OnRunChanged);
+            _isLand = _componentBank.CharacterModel.IsLand.Value;
+            _isLandDisposable = _componentBank.CharacterModel.IsLand.Subscribe(v => _isLand = v);
             SetAnimationParameter();
         }
 
         public void Stay()
         {
+            if (!_isLand)
+            {
+                _fallingElapsed += Time.deltaTime;
+                if (_fallingElapsed >= GameDefine.DefaultFallToFlyTime)
+                    _onMoveCommandFinished?.Invoke(this);
+            }
+            else
+            {
+                _fallingElapsed = 0f;
+            }
+
             if (_moveDirection == Vector2.zero)
                 return;
-            
+
             var camForward = _componentBank.CameraController.GetForward();
             var camRight = Vector3.Cross(Vector3.up, camForward);
             var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
-            if (_isRun)
-                worldDirection *= GameDefine.DefaultRunSpeed;
-            else
-                worldDirection *= GameDefine.DefaultMoveSpeed;
+            worldDirection *= _isRun ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
 
-            var targetRotation = Quaternion.LookRotation(worldDirection);
             _componentBank.Model.transform.rotation = Quaternion.Slerp(
                 _componentBank.Model.transform.rotation,
-                targetRotation,
+                Quaternion.LookRotation(worldDirection),
                 GameDefine.DefaultRotationSpeed * Time.deltaTime
             );
-
-            _componentBank.Rigidbody.linearVelocity = worldDirection;
         }
 
         public void FixedStay()
         {
+            if (_moveDirection == Vector2.zero)
+                return;
+
+            var camForward = _componentBank.CameraController.GetForward();
+            var camRight = Vector3.Cross(Vector3.up, camForward);
+            var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
+            worldDirection *= _isRun ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
+            _componentBank.Rigidbody.linearVelocity = new Vector3(
+                worldDirection.x,
+                _componentBank.Rigidbody.linearVelocity.y,
+                worldDirection.z
+            );
         }
 
         public void Exit()
-        { 
+        {
             _moveDirectionDisposable?.Dispose();
             _runDisposable?.Dispose();
+            _isLandDisposable?.Dispose();
+            _onMoveCommandFinished = null;
         }
 
         public void Lock()

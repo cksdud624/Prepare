@@ -20,13 +20,6 @@ namespace InGame.Component.Command
         public void Entry(ComponentBank componentBank)
         {
             _componentBank = componentBank;
-            if (_componentBank.CharacterModel.CombatState.Value is not CombatState.Standard)
-            {
-                Debug.LogError("State is not Standard");
-                return;
-            }
-
-            _componentBank.CharacterModel.CombatState.Value = CombatState.Zoom;
         }
 
         public void Stay()
@@ -39,7 +32,6 @@ namespace InGame.Component.Command
 
         public void Exit()
         {
-            _componentBank.CharacterModel.CombatState.Value = CombatState.Standard;
         }
     }
 }

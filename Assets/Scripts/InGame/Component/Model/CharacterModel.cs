@@ -38,8 +38,10 @@ namespace InGame.Component.Model
         
         #region Move
         public readonly ReactiveProperty<bool> IsRun = new ();
-        public readonly ReactiveProperty<Vector2> MoveDirection = new ();   
+        public readonly ReactiveProperty<Vector2> MoveDirection = new ();
         public readonly ReactiveProperty<bool> IsLand = new ();
+        public readonly ReactiveProperty<bool> IsFlyHolding = new();
+
         #endregion
     }
 }

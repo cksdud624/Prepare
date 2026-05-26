@@ -12,14 +12,24 @@ namespace InGame.Component.Command
 {
     public class CharacterAimMoveMoveCommand : IMoveCommand
     {
-public MoveCommandType CommandType { get; } = MoveCommandType.Move;
+        public MoveCommandType CommandType { get; } = MoveCommandType.AimMove;
         public MoveCommandGroup? MoveCommandsGroup { get; } = MoveCommandGroup.Locomotion;
+
+        public void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer)
+        {
+            _onMoveCommandFinished = onFinished;
+        }
+
         private ComponentBank _componentBank;
-        
+        private Action<IMoveCommand> _onMoveCommandFinished;
+
         private IDisposable _moveDirectionDisposable;
         private Vector2 _moveDirection;
         private IDisposable _runDisposable;
         private bool _isRun;
+        private IDisposable _isLandDisposable;
+        private bool _isLand;
+        private float _fallingElapsed;
         private CancellationTokenSource _entryCancelToken;
         private bool _isEntryRotating;
         
@@ -31,34 +41,53 @@ public MoveCommandType CommandType { get; } = MoveCommandType.Move;
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
             _isRun = _componentBank.CharacterModel.IsRun.Value;
             _runDisposable = _componentBank.CharacterModel.IsRun.Subscribe(OnRunChanged);
-            SetAnimationParameter();
+            _isLand = _componentBank.CharacterModel.IsLand.Value;
+            _isLandDisposable = _componentBank.CharacterModel.IsLand.Subscribe(v => _isLand = v);
+            SetAnimationParameter(false);
             SlerpEntryRotation(GameDefine.DefaultEntryRotationTime).Forget();
         }
 
         public void Stay()
         {
+            if (!_isLand)
+            {
+                _fallingElapsed += Time.deltaTime;
+                if (_fallingElapsed >= GameDefine.DefaultFallToFlyTime)
+                    _onMoveCommandFinished?.Invoke(this);
+            }
+            else
+            {
+                _fallingElapsed = 0f;
+            }
+
             var camForward = _componentBank.CameraController.GetForward();
 
             if (!_isEntryRotating)
-            {
                 _componentBank.Model.transform.rotation = Quaternion.LookRotation(camForward);
-            }
 
-            var camRight = Vector3.Cross(Vector3.up, camForward);
-            var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
-            _componentBank.Rigidbody.linearVelocity = worldDirection;
             SetAnimationParameter();
         }
 
         public void FixedStay()
         {
+            var camForward = _componentBank.CameraController.GetForward();
+            var camRight = Vector3.Cross(Vector3.up, camForward);
+            var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
+            worldDirection *= _isRun ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
+            _componentBank.Rigidbody.linearVelocity = new Vector3(
+                worldDirection.x,
+                _componentBank.Rigidbody.linearVelocity.y,
+                worldDirection.z
+            );
         }
 
         public void Exit()
-        { 
+        {
             _moveDirectionDisposable?.Dispose();
             _runDisposable?.Dispose();
+            _isLandDisposable?.Dispose();
             _entryCancelToken?.Cancel();
+            _onMoveCommandFinished = null;
         }
 
         public void Lock()

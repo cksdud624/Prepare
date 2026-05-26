@@ -25,9 +25,9 @@ namespace InGame.Component
         public CharacterModel CharacterModel { get; private set; }
         
         private readonly HashSet<Collider> _groundContacts = new();
+        public bool HasGroundContact => _groundContacts.Count > 0;
         private IDisposable _collisionEnterDisposable;
         private IDisposable _collisionExitDisposable;
-
 
         public async UniTask Init(InGameModel inGameModel, InputHub inputHub, CharacterModel characterModel)
         {

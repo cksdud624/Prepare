@@ -8,11 +8,12 @@ namespace InGame.Component.Command
 {
     public enum MoveCommandGroup { Locomotion }
 
-    public interface IMoveCommand   
+    public interface IMoveCommand
     {
         MoveCommandType CommandType { get; }
         //같은 그룹은 하나만 존재할 수 있음
         MoveCommandGroup? MoveCommandsGroup { get; }
+        void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer);
         //isLocked의 역할은 커맨드 자체는 적용되고 있지만 내부 동작은 하지 않는 방향임
         void Entry(ComponentBank componentBank, bool isLocked);
         void Stay();

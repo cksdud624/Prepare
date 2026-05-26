@@ -144,12 +144,12 @@ namespace InGame.Component.Module
             CrossFadeAnimation(_layerStates[maskType], blendTreePlayable).Forget();
         }
 
-        public void SetParameter(AvatarMaskType maskType, float value, bool isLerp = true)
+        public void SetParameter(AvatarMaskType maskType, float value, bool isLerp = true, float lerpDuration = 0.1f)
         {
             if (!TryGetControllerPlayable(maskType, out var playable)) return;
 
             if (isLerp)
-                LerpParameter(playable, value).Forget();
+                LerpParameter(playable, value, lerpDuration).Forget();
             else
                 playable.SetFloat(GameDefine.Parameter1, value);
         }
@@ -180,7 +180,7 @@ namespace InGame.Component.Module
             return false;
         }
 
-        private async UniTask LerpParameter(AnimatorControllerPlayable controllerPlayable, float value, float lerpDuration = 0.1f)
+        private async UniTask LerpParameter(AnimatorControllerPlayable controllerPlayable, float value, float lerpDuration)
         {
             _parameterCancelToken?.Cancel();
             _parameterCancelToken = new CancellationTokenSource();

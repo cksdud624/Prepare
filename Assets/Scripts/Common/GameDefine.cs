@@ -42,18 +42,18 @@ namespace Common
         {
             //점프 애니메이션
             Jump,
-            Fall,
             Land,
             //조준 점프 애니메이션
             AimJump,
-            AimFall,
-            AimLand
+            AimLand,
         }
 
         public enum BlendTreeType
         {
             Move1D,
-            AimMove2D
+            AimMove2D,
+            Fly1D,
+            AimFly1D,
         }
 
         public enum AvatarMaskType
@@ -92,10 +92,18 @@ namespace Common
             Jump,
             AimMove,
             AimJump,
+            Fly,
+            AimFly,
         }
-        
+
         public const float DefaultMoveSpeed = 1f;
         public const float DefaultRunSpeed = 2f;
+        public const float DefaultJumpTime = 0.4f;
+        public const float DefaultJumpForce = 5f;
+        public const float DefaultLandTime = 0.4f;
+        public const float DefaultFlySpeed = 3f;
+        public const float DefaultFlyBlendSpeed = 0.5f;
+        public const float DefaultFallToFlyTime = 1f;
         #endregion
         
         #region Rotation
