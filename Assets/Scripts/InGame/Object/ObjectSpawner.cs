@@ -33,8 +33,8 @@ namespace InGame.Object
             var player = Instantiate(characterBase);
             await player.Init(_inGameModel, playerInfo.CharacterModel);
             _objects.Add(player);
-            _characters.Add(player);    
-            playerInfo.PlayerObject = player;
+            _characters.Add(player);
+            playerInfo.SetPlayer(player);
         }
     }
 }

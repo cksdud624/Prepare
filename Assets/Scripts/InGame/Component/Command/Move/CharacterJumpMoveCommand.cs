@@ -2,15 +2,15 @@ using System;
 using Common;
 using UnityEngine;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
-using AnimationType = Common.GameDefine.AnimationType;
+using AnimationType =  Common.GameDefine.AnimationType;
 using AvatarMaskType = Common.GameDefine.AvatarMaskType;
 using UniRx;
 
 namespace InGame.Component.Command
 {
-    public class CharacterAimJumpMoveCommand : IMoveCommand
+    public class CharacterJumpMoveCommand : IMoveCommand
     {
-        public MoveCommandType CommandType { get; } = MoveCommandType.AimJump;
+        public MoveCommandType CommandType { get; } = MoveCommandType.Jump;
         public MoveCommandGroup? MoveCommandsGroup { get; } = MoveCommandGroup.Locomotion;
         public float Elapsed { get; private set; }
         public bool IsLanding { get; private set; }
@@ -22,33 +22,30 @@ namespace InGame.Component.Command
         private bool _isRun;
         private bool _applyForce = true;
 
-        private IDisposable _isLandChangedDisposable;
-        private IDisposable _moveDirectionDisposable;
-
-        private float _transferLerpTime = GameDefine.DefaultEntryRotationTime;
-
-        public void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer)
+        public void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer, ComponentBank componentBank)
         {
             _onMoveCommandFinished = onFinished;
-            if (transfer is CharacterJumpMoveCommand jump)
+            _componentBank = componentBank;
+            if (transfer is CharacterAimJumpMoveCommand aimJump)
             {
-                Elapsed = jump.Elapsed;
-                IsLanding = jump.IsLanding;
+                Elapsed = aimJump.Elapsed;
+                IsLanding = aimJump.IsLanding;
                 _applyForce = false;
-                _transferLerpTime = 0f;
             }
         }
 
-        public void Entry(ComponentBank componentBank, bool isLocked)
+        private IDisposable _isLandChangedDisposable;
+        private IDisposable _moveDirectionDisposable;
+
+        public void Entry()
         {
-            _componentBank = componentBank;
             if (_applyForce)
             {
-                _componentBank.AnimationPlayer.PlayAnimation(AnimationType.AimJump, AvatarMaskType.Base, GameDefine.DefaultJumpTime);
+                _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Jump, AvatarMaskType.Base, GameDefine.DefaultJumpTime);
                 _componentBank.Rigidbody.linearVelocity += new Vector3(0f, GameDefine.DefaultJumpForce, 0f);
             }
             else if (IsLanding)
-                _componentBank.AnimationPlayer.PlayAnimation(AnimationType.AimLand, AvatarMaskType.Base, GameDefine.DefaultLandTime);
+                _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Land, AvatarMaskType.Base, GameDefine.DefaultLandTime);
             _isLand = _componentBank.CharacterModel.IsLand.Value;
             _isLandChangedDisposable = _componentBank.CharacterModel.IsLand.Subscribe(OnIsLandChanged);
             _moveDirection = _componentBank.CharacterModel.MoveDirection.Value;
@@ -63,22 +60,22 @@ namespace InGame.Component.Command
             {
                 if (Elapsed >= 0.1f && _isLand)
                 {
-                    _componentBank.AnimationPlayer.PlayAnimation(AnimationType.AimLand, AvatarMaskType.Base, GameDefine.DefaultLandTime);
+                    _componentBank.AnimationPlayer.PlayAnimation(AnimationType.Land, AvatarMaskType.Base, GameDefine.DefaultLandTime);
                     IsLanding = true;
                     Elapsed = 0f;
                 }
 
-                var camForward = _componentBank.CameraController.GetForward();
-
-                _transferLerpTime += Time.deltaTime;
-                if (_transferLerpTime > GameDefine.DefaultEntryRotationTime)
-                    _componentBank.Model.transform.rotation = Quaternion.LookRotation(camForward);
-                else
+                if (_moveDirection != Vector2.zero)
                 {
+                    var camForward = _componentBank.CameraController.GetForward();
+                    var camRight = Vector3.Cross(Vector3.up, camForward);
+                    var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
+                    worldDirection *= _isRun ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
+
                     _componentBank.Model.transform.rotation = Quaternion.Slerp(
                         _componentBank.Model.transform.rotation,
-                        Quaternion.LookRotation(camForward),
-                        _transferLerpTime / GameDefine.DefaultEntryRotationTime
+                        Quaternion.LookRotation(worldDirection),
+                        GameDefine.DefaultRotationSpeed * Time.deltaTime
                     );
                 }
             }
@@ -109,14 +106,7 @@ namespace InGame.Component.Command
         {
             _isLandChangedDisposable?.Dispose();
             _moveDirectionDisposable?.Dispose();
-        }
-
-        public void Lock()
-        {
-        }
-
-        public void UnLock()
-        {
+            _onMoveCommandFinished = null;
         }
 
         #region Events

@@ -15,8 +15,11 @@ namespace InGame.Component.Model
             WeaponStatusDataList = weaponStatusDataList;
             SetWeapon(0);
         }
-        
+
+        #region Data
         public CharacterData CharacterData { get; private set; }
+        public bool IsPlayer { get; set; }
+        #endregion
         
         #region Combat
         public IReadOnlyList<WeaponStatusData> WeaponStatusDataList { get; private set; }

@@ -62,26 +62,30 @@ namespace Common
             Upper,
         }
         
+        public enum WeaponAnimationType
+        {
+            Idle,
+            Aim
+        }
+        
         #endregion
         
         #region Combat
         public enum CombatCommandType
         {
-            Zoom
+            Idle,
+            Aim
         }
 
         public enum CombatState
         {
             Standard,
-            Zoom
+            Aim
         }
 
         public enum WeaponType
         {
-            None,
-            Rifle,
-            Pistol,
-            Melee
+            Pistol
         }
         #endregion
         
@@ -115,8 +119,8 @@ namespace Common
         public const float DefaultEntryRotationTime = 0.1f;
         public const float DefaultRotationSpeed = 10f;
         public const float DefaultDragRotationSensitivity = 0.1f;
-        public const float DefaultCameraPitchMin = -60f;
-        public const float DefaultCameraPitchMax = 60f;
+        public const float DefaultCameraPitchMin = -30f;
+        public const float DefaultCameraPitchMax = 30f;
         #endregion
     }
 }

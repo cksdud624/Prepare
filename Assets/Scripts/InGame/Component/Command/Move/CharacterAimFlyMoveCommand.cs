@@ -14,9 +14,10 @@ namespace InGame.Component.Command
         public MoveCommandType CommandType { get; } = MoveCommandType.AimFly;
         public MoveCommandGroup? MoveCommandsGroup { get; } = MoveCommandGroup.Locomotion;
 
-        public void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer)
+        public void Init(Action<IMoveCommand> onFinished, IMoveCommand transfer, ComponentBank componentBank)
         {
             _onMoveCommandFinished = onFinished;
+            _componentBank = componentBank;
             IsAscending = transfer is CharacterFlyMoveCommand fly ? fly.IsAscending : true;
             _transferLerpTime = transfer is CharacterFlyMoveCommand ? 0f : GameDefine.DefaultEntryRotationTime;
         }
@@ -37,9 +38,8 @@ namespace InGame.Component.Command
         private IDisposable _isRunDisposable;
         private IDisposable _isFlyHoldingDisposable;
 
-        public void Entry(ComponentBank componentBank, bool isLocked)
+        public void Entry()
         {
-            _componentBank = componentBank;
             _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.AimFly1D, AvatarMaskType.Base);
 
             _moveDirection = _componentBank.CharacterModel.MoveDirection.Value;
@@ -133,9 +133,6 @@ namespace InGame.Component.Command
             _isFlyHoldingDisposable?.Dispose();
             _onMoveCommandFinished = null;
         }
-
-        public void Lock() { }
-        public void UnLock() { }
 
         #region Events
         private void OnIsLandChanged(bool isLand) => _isLand = isLand;

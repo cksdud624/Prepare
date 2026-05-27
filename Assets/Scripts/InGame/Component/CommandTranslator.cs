@@ -9,7 +9,6 @@ using UnityEngine;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
 using CombatCommandType = Common.GameDefine.CombatCommandType;
 using CombatState = Common.GameDefine.CombatState;
-using UniRx;
 
 namespace InGame.Component
 {
@@ -20,12 +19,10 @@ namespace InGame.Component
         private InputHub _inputHub;
 
         private readonly List<IMoveCommand> _moveCommands = new();
-        private readonly List<IMoveCommand> _removePendingMove = new();
-        
         private readonly List<ICombatCommand> _combatCommands = new();
+        private readonly List<IMoveCommand> _removePendingMove = new();
         private readonly List<ICombatCommand> _removePendingCombat = new();
         private readonly Dictionary<MoveCommandGroup, int> _lockedMoveGroups = new();
-        private bool _isCombatLock;
         
         #region Command Generate Variables
         private float _fallingElapse;
@@ -46,6 +43,7 @@ namespace InGame.Component
             Global.Instance.BindFixedUpdate(this);
 
             PlayCommand(MoveCommandType.Move);
+            PlayCommand(CombatCommandType.Idle);
             await UniTask.CompletedTask;
         }
 
@@ -74,10 +72,12 @@ namespace InGame.Component
             switch (_componentBank.CharacterModel.CombatState.Value)
             {
                 case CombatState.Standard:
-                    _componentBank.CharacterModel.CombatState.Value = CombatState.Zoom;
+                    _componentBank.CharacterModel.CombatState.Value = CombatState.Aim;
+                    PlayCommand(CombatCommandType.Aim);
                     break;
-                case CombatState.Zoom:
+                case CombatState.Aim:
                     _componentBank.CharacterModel.CombatState.Value = CombatState.Standard;
+                    PlayCommand(CombatCommandType.Idle);
                     break;
             }
 
@@ -136,7 +136,7 @@ namespace InGame.Component
             {
                 switch (_componentBank.CharacterModel.CombatState.Value)
                 {
-                    case CombatState.Zoom:
+                    case CombatState.Aim:
                         PlayCommand(MoveCommandType.AimJump);
                         break;
                     case CombatState.Standard:
@@ -152,7 +152,7 @@ namespace InGame.Component
             {
                 switch (_componentBank.CharacterModel.CombatState.Value)
                 {
-                    case CombatState.Zoom:
+                    case CombatState.Aim:
                         PlayCommand(MoveCommandType.AimFly);
                         break;
                     case CombatState.Standard:
@@ -176,24 +176,15 @@ namespace InGame.Component
 
             if (_removePendingMove.Count > 0)
             {
-                foreach (var command in _removePendingMove)
-                {
-                    command.Exit();
-                    _moveCommands.Remove(command);
-                    FinishCommand(command);
-                }
+                foreach (var moveCommand in _removePendingMove)
+                    FinishCommand(moveCommand);
                 _removePendingMove.Clear();
             }
 
             if (_removePendingCombat.Count > 0)
             {
-                foreach (var command in _removePendingCombat)
-                {
-                    if (command.IsCombatLock)
-                        _isCombatLock = false;
-                    command.Exit();
-                    _combatCommands.Remove(command);
-                }
+                foreach (var combatCommand in _removePendingCombat)
+                    FinishCommand(combatCommand);
                 _removePendingCombat.Clear();
             }
         }
@@ -204,56 +195,26 @@ namespace InGame.Component
                 moveCommand.FixedStay();
             foreach (var combatCommand in _combatCommands)
                 combatCommand.FixedStay();
-            
+
             if (_removePendingMove.Count > 0)
             {
-                foreach (var command in _removePendingMove)
-                {
-                    command.Exit();
-                    _moveCommands.Remove(command);
-                    FinishCommand(command);
-                }
+                foreach (var moveCommand in _removePendingMove)
+                    FinishCommand(moveCommand);
                 _removePendingMove.Clear();
             }
 
             if (_removePendingCombat.Count > 0)
             {
-                foreach (var command in _removePendingCombat)
-                {
-                    if (command.IsCombatLock)
-                        _isCombatLock = false;
-                    command.Exit();
-                    _combatCommands.Remove(command);
-                }
+                foreach (var combatCommand in _removePendingCombat)
+                    FinishCommand(combatCommand);
                 _removePendingCombat.Clear();
             }
         }
         
-        private void OnMoveCommandFinished(IMoveCommand moveCommand)
-        {
-            _removePendingMove.Add(moveCommand);
-        }
+        private void OnMoveCommandFinished(IMoveCommand moveCommand) => _removePendingMove.Add(moveCommand);
+        
 
-        private void OnCombatCommandFinished(ICombatCommand command)
-        {
-            /*
-            if (command.LockedMoveGroups is { Length: > 0 })
-            {
-                foreach (var lockGroup in command.LockedMoveGroups)
-                {
-                    _lockedMoveGroups[lockGroup]--;
-                    if (_lockedMoveGroups[lockGroup] <= 0)
-                    {
-                        _lockedMoveGroups.Remove(lockGroup);
-                        foreach (var moveCommand in _moveCommands)
-                            moveCommand.UnLock();
-                    }
-                }
-            }
-            */
-            command.OnFinished -= OnCombatCommandFinished;
-            _removePendingCombat.Add(command);
-        }
+        private void OnCombatCommandFinished(ICombatCommand command) => _removePendingCombat.Add(command);
         #endregion
 
         private void PlayCommand(MoveCommandType moveCommandType, IMoveCommand transfer = null)
@@ -274,9 +235,7 @@ namespace InGame.Component
                 Debug.LogWarning("Command is not implemented: " + moveCommandType);
                 return;
             }
-
-            newCommand.Init(OnMoveCommandFinished, transfer);
-
+            
             if (newCommand.MoveCommandsGroup.HasValue)
             {
                 foreach (var command in _moveCommands)
@@ -289,18 +248,18 @@ namespace InGame.Component
                     }
                 }
             }
+            
+            newCommand.Init(OnMoveCommandFinished, transfer, _componentBank);
             _moveCommands.Add(newCommand);
-            newCommand.Entry(_componentBank, false);
+            newCommand.Entry();
         }
 
-        private void PlayCommand(CombatCommandType combatCommandType)
+        private void PlayCommand(CombatCommandType combatCommandType, ICombatCommand transfer = null)
         {
-            if (_isCombatLock)
-                return;
-            
             ICombatCommand newCommand = combatCommandType switch
             {
-                CombatCommandType.Zoom => new CharacterZoomCombatCommand(),
+                CombatCommandType.Idle => new CharacterIdleCombatCommand(),
+                CombatCommandType.Aim => new CharacterAimCombatCommand(),
                 _ => null
             };
 
@@ -309,17 +268,35 @@ namespace InGame.Component
                 Debug.LogWarning("Command is not implemented: " + combatCommandType);
                 return;
             }
+
+            if (newCommand.CombatCommandsGroup.HasValue)
+            {
+                foreach (var command in _combatCommands)
+                {
+                    if (newCommand.CombatCommandsGroup == command.CombatCommandsGroup)
+                    {
+                        command.Exit();
+                        _combatCommands.Remove(command);
+                        break;
+                    }
+                }
+            }
             
-            if (newCommand.IsCombatLock)
-                _isCombatLock = true;
-            
-            newCommand.OnFinished += OnCombatCommandFinished;
+            newCommand.Init(OnCombatCommandFinished, transfer, _componentBank);
             _combatCommands.Add(newCommand);
-            newCommand.Entry(_componentBank);
+            newCommand.Entry();
+        }
+        
+        private void FinishCommand(ICombatCommand combatCommand)
+        {
+            combatCommand.Exit();
+            _combatCommands.Remove(combatCommand);
         }
 
         private void FinishCommand(IMoveCommand moveCommand)
         {
+            moveCommand.Exit();
+            _moveCommands.Remove(moveCommand);
             switch (moveCommand.CommandType)
             {
                 case MoveCommandType.Move:

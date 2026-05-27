@@ -12,6 +12,8 @@ using UnityEngine.Playables;
 using AnimationType = Common.GameDefine.AnimationType;
 using BlendTreeType = Common.GameDefine.BlendTreeType;
 using AvatarMaskType = Common.GameDefine.AvatarMaskType;
+using WeaponType = Common.GameDefine.WeaponType;
+using WeaponAnimationType = Common.GameDefine.WeaponAnimationType;
 using LoadTarget = Common.AssetKeys.LoadTarget;
 
 namespace InGame.Component.Module
@@ -32,19 +34,23 @@ namespace InGame.Component.Module
         private InGameModel _inGameModel;
         private Animator _animator;
         private CharacterModel _characterModel;
-
+        
+        //커스텀 애니메이션
         private readonly HashSet<AnimationType> _customAnimationType = new();
         private readonly HashSet<BlendTreeType> _customBlendTreeType = new();
+        private readonly HashSet<(WeaponType, WeaponAnimationType)> _customWeaponAnimationType = new();
+        
+        //애니메이션 데이터 캐싱
         private readonly Dictionary<AnimationType, AnimationClip> _animationClips = new();
         private readonly Dictionary<BlendTreeType, RuntimeAnimatorController> _blendTrees = new();
+        private readonly Dictionary<(WeaponType, WeaponAnimationType), AnimationClip> _weaponAnimationClips = new();
+        
         private readonly Dictionary<AvatarMaskType, LayerState> _layerStates = new();
-
+        
         private PlayableGraph _graph;
         private AnimationLayerMixerPlayable _layerMixer;
         private CancellationTokenSource _layerCancelToken;
-
         private CancellationTokenSource _parameterCancelToken;
-        //혹시라도 레이어가 추가되면 각 레이어들이 사용되고 있는지를 각각 관리해야함(리스트?)
         
         
         public async UniTask Init(InGameModel inGameModel, Animator animator, CharacterModel characterModel)
@@ -53,6 +59,8 @@ namespace InGame.Component.Module
             _characterModel = characterModel;
 
             var characterData = _characterModel.CharacterData;
+            
+            /*
             if (!(characterData.CustomAnimation.Count == 1 && string.IsNullOrEmpty(characterData.CustomAnimation[0])))
             {
                 foreach (var custom in characterData.CustomAnimation)
@@ -63,6 +71,7 @@ namespace InGame.Component.Module
                         Debug.LogError("Custom Animation Type not found: " + custom);
                 }
             }
+            */
 
             var assetManager = Global.Instance.AssetManager;
             string key;
@@ -71,13 +80,27 @@ namespace InGame.Component.Module
                 key = _customAnimationType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
                 var clip = await assetManager.LoadAssetAsync<AnimationClip>(LoadTarget.AnimationClip, key);
                 if (clip != null) _animationClips[type] = clip;
+                else Debug.LogError("AnimationClip not found: " + key);
             }
-
+            
             foreach (BlendTreeType type in Enum.GetValues(typeof(BlendTreeType)))
             {
                 key = _customBlendTreeType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
                 var tree = await assetManager.LoadAssetAsync<RuntimeAnimatorController>(LoadTarget.BlendTree, key);
                 if (tree != null) _blendTrees[type] = tree;
+            }
+            
+            foreach (var weaponData in characterModel.WeaponStatusDataList)
+            {
+                var weaponType = (WeaponType)weaponData.WeaponType;
+                foreach (WeaponAnimationType animType in Enum.GetValues(typeof(WeaponAnimationType)))
+                {
+                    key = _customWeaponAnimationType.Contains((weaponType, animType))
+                    ? $"{weaponData.Id}_{animType}" : $"default_{weaponType}_{animType}";
+                    var clip = await assetManager.LoadAssetAsync<AnimationClip>(LoadTarget.WeaponAnimationClip, key);
+                    if (clip != null) _weaponAnimationClips[(weaponType, animType)] = clip;
+                    else Debug.LogError("AnimationClip not found: " + key);
+                }
             }
 
             _graph = PlayableGraph.Create($"AnimationPlayer_{gameObject.name}");
@@ -130,6 +153,24 @@ namespace InGame.Component.Module
             {
                 CrossFadeLayer((int)maskType, 1).Forget();
             }
+        }
+
+        public void PlayAnimation(WeaponType weaponType, WeaponAnimationType animType, AvatarMaskType maskType, float? playDuration = null)
+        {
+            if (!_weaponAnimationClips.TryGetValue((weaponType, animType), out var clip))
+            {
+                Debug.LogError($"WeaponAnimationClip not found: {weaponType}_{animType}");
+                return;
+            }
+
+            var clipPlayable = AnimationClipPlayable.Create(_graph, clip);
+            if (playDuration.HasValue && playDuration.Value != 0f)
+                clipPlayable.SetSpeed(clip.length / playDuration.Value);
+
+            CrossFadeAnimation(_layerStates[maskType], clipPlayable).Forget();
+
+            if (maskType == AvatarMaskType.Upper)
+                CrossFadeLayer((int)maskType, 1).Forget();
         }
 
         public void PlayBlendTree(BlendTreeType type, AvatarMaskType maskType)
@@ -380,6 +421,19 @@ namespace InGame.Component.Module
             {
                 key = _customBlendTreeType.Contains(type) ? $"{characterData.Id}_{type}" : $"default_{type}";
                 assetManager.ReleaseAsset<RuntimeAnimatorController>(LoadTarget.BlendTree, key);
+            }
+
+            foreach (var weaponData in _characterModel.WeaponStatusDataList)
+            {
+                var weaponType = (WeaponType)weaponData.WeaponType;
+                string weaponTypeName = weaponType.ToString();
+                string weaponTypeLower = weaponTypeName.ToLower();
+                foreach (WeaponAnimationType animType in Enum.GetValues(typeof(WeaponAnimationType)))
+                {
+                    string animTypeLower = animType.ToString().ToLower();
+                    key = $"{weaponTypeName}/default_{weaponTypeLower}_{animTypeLower}";
+                    assetManager.ReleaseAsset<AnimationClip>(LoadTarget.WeaponAnimationClip, key);
+                }
             }
         }
     }

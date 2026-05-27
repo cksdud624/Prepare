@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using Common;
 using Cysharp.Threading.Tasks;
@@ -63,7 +64,7 @@ namespace InGame.Component.Module
                 case CombatState.Standard:
                     LerpCamera(GameDefine.DefaultCameraDistance, 0f).Forget();
                     break;
-                case CombatState.Zoom:
+                case CombatState.Aim:
                     LerpCamera(GameDefine.DefaultZoomCameraDistance, GameDefine.DefaultZoomCameraShoulderOffsetX).Forget();
                     break;
                 default:
@@ -118,7 +119,7 @@ namespace InGame.Component.Module
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
             }
-            catch (System.OperationCanceledException) { }
+            catch (OperationCanceledException) { }
         }
 
         private void OnDestroy()
