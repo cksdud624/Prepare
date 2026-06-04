@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using Common;
 using Common.Template.Interface;
 using Cysharp.Threading.Tasks;
@@ -22,7 +23,6 @@ namespace InGame.Component
         private readonly List<ICombatCommand> _combatCommands = new();
         private readonly List<IMoveCommand> _removePendingMove = new();
         private readonly List<ICombatCommand> _removePendingCombat = new();
-        private readonly Dictionary<MoveCommandGroup, int> _lockedMoveGroups = new();
         
         #region Command Generate Variables
         private float _fallingElapse;
@@ -43,21 +43,12 @@ namespace InGame.Component
             Global.Instance.BindFixedUpdate(this);
 
             PlayCommand(MoveCommandType.Move);
-            PlayCommand(CombatCommandType.Idle);
+            PlayCommand(CombatCommandType.Move);
             await UniTask.CompletedTask;
         }
 
         #region Events
-        private void OnMove(Vector2 direction)
-        {
-            _componentBank.CharacterModel.MoveDirection.Value = direction;
-            foreach (var moveCommand in _moveCommands)
-            {
-                if (moveCommand.MoveCommandsGroup is MoveCommandGroup.Locomotion)
-                    return;
-            }
-            PlayCommand(MoveCommandType.Move);
-        }
+        private void OnMove(Vector2 direction) => _componentBank.CharacterModel.MoveDirection.Value = direction;
 
         private void OnLeftClick(bool isClick)
         {
@@ -68,103 +59,77 @@ namespace InGame.Component
         {
             if (!isClick)
                 return;
-
+            
             switch (_componentBank.CharacterModel.CombatState.Value)
             {
                 case CombatState.Standard:
-                    _componentBank.CharacterModel.CombatState.Value = CombatState.Aim;
-                    PlayCommand(CombatCommandType.Aim);
+                    ChangeCombatState(CombatState.Aim);
                     break;
                 case CombatState.Aim:
-                    _componentBank.CharacterModel.CombatState.Value = CombatState.Standard;
-                    PlayCommand(CombatCommandType.Idle);
+                    ChangeCombatState(CombatState.Standard);
                     break;
-            }
-
-            foreach (var command in _moveCommands)
-            {
-                if (command.MoveCommandsGroup == MoveCommandGroup.Locomotion)
-                {
-                    switch (command.CommandType)
-                    {
-                        case MoveCommandType.Move:
-                            PlayCommand(MoveCommandType.AimMove, command);
-                            break;
-                        case MoveCommandType.AimMove:
-                            PlayCommand(MoveCommandType.Move, command);
-                            break;
-                        case MoveCommandType.Jump:
-                            PlayCommand(MoveCommandType.AimJump, command);
-                            break;
-                        case MoveCommandType.AimJump:
-                            PlayCommand(MoveCommandType.Jump, command);
-                            break;
-                        case MoveCommandType.Fly:
-                            PlayCommand(MoveCommandType.AimFly, command);
-                            break;
-                        case MoveCommandType.AimFly:
-                            PlayCommand(MoveCommandType.Fly, command);
-                            break;
-                    }
-                    break;
-                }
             }
         }
 
         private void OnShiftClick(bool isClick)
         {
-            _componentBank.CharacterModel.IsRun.Value = isClick;
+            _componentBank.CharacterModel.IsSprint.Value = isClick;
+            if (isClick && _componentBank.CharacterModel.CombatState.Value is CombatState.Aim)
+                ChangeCombatState(CombatState.Standard);
         }
 
         private void OnSpaceClick(bool isClick)
         {
-            _componentBank.CharacterModel.IsFlyHolding.Value = isClick;
+            _componentBank.CharacterModel.IsSpaceHolding.Value = isClick;
             
             if (!isClick)
                 return;
-            
+
+            IMoveCommand flyCommand = null;
             IMoveCommand jumpCommand = null;
-            
             foreach (var command in _moveCommands)
             {
-                if (command.CommandType is MoveCommandType.Jump or MoveCommandType.AimJump)
-                    jumpCommand = command;
-            }
-            
-            //case 1: 바닥에 붙어있을 때
-            if (_componentBank.CharacterModel.IsLand.Value)
-            {
-                switch (_componentBank.CharacterModel.CombatState.Value)
+                if (command.MoveCommandsGroup is MoveCommandGroup.Locomotion)
                 {
-                    case CombatState.Aim:
-                        PlayCommand(MoveCommandType.AimJump);
-                        break;
-                    case CombatState.Standard:
-                        PlayCommand(MoveCommandType.Jump);
-                        break;
-                    default:
-                        Debug.LogError("CombatState is not valid");
-                        break;
+                    switch (command.CommandType)
+                    {
+                        case MoveCommandType.Fly or MoveCommandType.AimFly:
+                            flyCommand = command;
+                            break;
+                        case MoveCommandType.Jump or MoveCommandType.AimJump:
+                            jumpCommand = command;
+                            break;
+                    }
                 }
             }
-            //case 2: 점프 중일 때
-            else if (jumpCommand != null)
+
+            if (flyCommand != null)
+                return;
+            if (jumpCommand != null)
             {
                 switch (_componentBank.CharacterModel.CombatState.Value)
                 {
-                    case CombatState.Aim:
-                        PlayCommand(MoveCommandType.AimFly);
-                        break;
                     case CombatState.Standard:
                         PlayCommand(MoveCommandType.Fly);
                         break;
-                    default:
-                        Debug.LogError("CombatState is not valid");
+                    case CombatState.Aim:
+                        PlayCommand(MoveCommandType.AimFly);
                         break;
                 }
             }
-            //case 3 : 이미 공중에 있을 때
-            // => 이 부분은 Fly 커맨드 단에서 구현하는게 맞을 듯
+            else if (_componentBank.CharacterModel.IsLand.Value)
+            {
+                switch (_componentBank.CharacterModel.CombatState.Value)
+                {
+                    case CombatState.Standard:
+                        PlayCommand(MoveCommandType.Jump);
+                        break;
+                    case CombatState.Aim:
+                        PlayCommand(MoveCommandType.AimJump);
+                        break;
+                }
+            }
+
         }
 
         public void OnUpdate()
@@ -212,7 +177,6 @@ namespace InGame.Component
         }
         
         private void OnMoveCommandFinished(IMoveCommand moveCommand) => _removePendingMove.Add(moveCommand);
-        
 
         private void OnCombatCommandFinished(ICombatCommand command) => _removePendingCombat.Add(command);
         #endregion
@@ -258,8 +222,9 @@ namespace InGame.Component
         {
             ICombatCommand newCommand = combatCommandType switch
             {
-                CombatCommandType.Idle => new CharacterIdleCombatCommand(),
-                CombatCommandType.Aim => new CharacterAimCombatCommand(),
+                CombatCommandType.Move   => new CharacterMoveCombatCommand(),
+                CombatCommandType.Air    => new CharacterAirCombatCommand(),
+                CombatCommandType.Aim    => new CharacterAimCombatCommand(),
                 _ => null
             };
 
@@ -287,39 +252,100 @@ namespace InGame.Component
             newCommand.Entry();
         }
         
-        private void FinishCommand(ICombatCommand combatCommand)
-        {
-            combatCommand.Exit();
-            _combatCommands.Remove(combatCommand);
-        }
-
         private void FinishCommand(IMoveCommand moveCommand)
         {
             moveCommand.Exit();
             _moveCommands.Remove(moveCommand);
-            switch (moveCommand.CommandType)
+
+            if (_componentBank.CharacterModel.IsLand.Value)
             {
-                case MoveCommandType.Move:
-                    PlayCommand(MoveCommandType.Fly);
+                switch(_componentBank.CharacterModel.CombatState.Value)
+                {
+                    case CombatState.Standard:
+                        PlayCommand(MoveCommandType.Move);
+                        break;
+                    case CombatState.Aim:
+                        PlayCommand(MoveCommandType.AimMove);
+                        break;
+                }
+            }
+            else
+            {
+                switch(_componentBank.CharacterModel.CombatState.Value)
+                {
+                    case CombatState.Standard:
+                        PlayCommand(MoveCommandType.Fly);
+                        break;
+                    case CombatState.Aim:
+                        PlayCommand(MoveCommandType.AimFly);
+                        break;
+                }
+            }
+        }
+        
+        private void FinishCommand(ICombatCommand combatCommand)
+        {
+            combatCommand.Exit();
+            _combatCommands.Remove(combatCommand);
+            
+            RefreshCombatCommand();
+        }
+
+        private void RefreshCombatCommand()
+        {
+            switch (_componentBank.CharacterModel.CombatState.Value)
+            {
+                case CombatState.Standard:
+                    PlayCommand(_componentBank.CharacterModel.IsLand.Value
+                        ? CombatCommandType.Move
+                        : CombatCommandType.Air);
                     break;
-                case MoveCommandType.AimMove:
-                    PlayCommand(MoveCommandType.AimFly);
-                    break;
-                case MoveCommandType.Jump or MoveCommandType.Fly:
-                    PlayCommand(MoveCommandType.Move);
-                    break;
-                case MoveCommandType.AimJump or MoveCommandType.AimFly:
-                    PlayCommand(MoveCommandType.AimMove);
-                    break;
-                default:
-                    Debug.LogError("MoveCommand Finish is not implemented: " + moveCommand.CommandType);
+                case CombatState.Aim:
+                    PlayCommand(CombatCommandType.Aim);
                     break;
             }
+        }
+
+        private void ChangeCombatState(CombatState combatState)
+        {
+            _componentBank.CharacterModel.CombatState.Value = combatState;
+            switch (combatState)
+            {
+                case CombatState.Standard:
+                    foreach (var command in _moveCommands)
+                    {
+                        if (command.MoveCommandsGroup != MoveCommandGroup.Locomotion) continue;
+                        switch (command.CommandType)
+                        {
+                            case MoveCommandType.AimMove:  PlayCommand(MoveCommandType.Move, command);  break;
+                            case MoveCommandType.AimJump:  PlayCommand(MoveCommandType.Jump, command); break;
+                            case MoveCommandType.AimFly:   PlayCommand(MoveCommandType.Fly, command);  break;
+                        }
+                        break;
+                    }
+                    break;
+                case CombatState.Aim:
+                    foreach (var command in _moveCommands)
+                    {
+                        if (command.MoveCommandsGroup != MoveCommandGroup.Locomotion) continue;
+                        switch (command.CommandType)
+                        {
+                            case MoveCommandType.Move:  PlayCommand(MoveCommandType.AimMove, command);  break;
+                            case MoveCommandType.Jump:  PlayCommand(MoveCommandType.AimJump, command); break;
+                            case MoveCommandType.Fly:   PlayCommand(MoveCommandType.AimFly, command);  break;
+                        }
+                        break;
+                    }
+                    break;
+            }
+            RefreshCombatCommand();
         }
 
         private void OnDestroy()
         {
             Global.Instance?.UnBindUpdate(this);
+            Global.Instance?.UnBindFixedUpdate(this);
+            
             if (_inputHub != null)
             {
                 _inputHub.OnMove -= OnMove;

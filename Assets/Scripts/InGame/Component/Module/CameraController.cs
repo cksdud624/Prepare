@@ -42,8 +42,7 @@ namespace InGame.Component.Module
             _aimTarget.transform.SetParent(_playerSight.transform);
             _aimTarget.transform.localPosition = new Vector3(0f, 0f, 100f);
             _aimTarget.transform.localRotation = Quaternion.identity;
-
-            OnCombatStateChanged(_characterModel.CombatState.Value);
+            
             _characterModel.CombatState.Subscribe(OnCombatStateChanged);
             await UniTask.CompletedTask;
         }
@@ -57,29 +56,17 @@ namespace InGame.Component.Module
             _playerSight.transform.localRotation = Quaternion.Euler(_pitch, _yaw, 0f);
         }
 
-        private void OnCombatStateChanged(CombatState combatState)
-        {
-            switch (combatState)
-            {
-                case CombatState.Standard:
-                    LerpCamera(GameDefine.DefaultCameraDistance, 0f).Forget();
-                    break;
-                case CombatState.Aim:
-                    LerpCamera(GameDefine.DefaultZoomCameraDistance, GameDefine.DefaultZoomCameraShoulderOffsetX).Forget();
-                    break;
-                default:
-                    Debug.LogError($"CombatState is not implemented {combatState}");
-                    break;
-            }
-        }
+        private void OnCombatStateChanged(CombatState combatState) => ApplyCamera(combatState, true);
         #endregion
 
-        public void AttachCamera(CinemachineCamera cinemachineCamera)
+        public void AttachCamera(CinemachineCamera cinemachineCamera, bool isLerp)
         {
             _cinemachineCamera = cinemachineCamera;
             _cinemachineCamera.Follow = _playerSight.transform;
             _cinemachineCamera.LookAt = _aimTarget.transform;
             _thirdPersonFollow = _cinemachineCamera.GetComponent<CinemachineThirdPersonFollow>();
+
+            ApplyCamera(_characterModel.CombatState.Value, isLerp);
         }
 
         public void DetachCamera()
@@ -87,11 +74,41 @@ namespace InGame.Component.Module
             _cinemachineCamera.Follow = null;
             _cinemachineCamera.LookAt = null;
             _cinemachineCamera = null;
+            _thirdPersonFollow = null;
         }
 
         public Vector3 GetForward() => Vector3.ProjectOnPlane(_playerSight.transform.forward, Vector3.up).normalized;
+        public Transform PlayerSight => _playerSight.transform;
 
-        private async UniTaskVoid LerpCamera(float targetDistance, float targetShoulderX)
+        private float GetCameraParams(CombatState combatState) => combatState switch
+        {
+            CombatState.Aim => GameDefine.DefaultZoomCameraDistance,
+            _ => GameDefine.DefaultCameraDistance
+        };
+
+        private void ApplyCamera(CombatState combatState, bool isLerp)
+        {
+            var distance = GetCameraParams(combatState);
+            if (isLerp)
+                ApplyCameraLerp(distance).Forget();
+            else
+                ApplyCameraImmediate(distance);
+        }
+
+        private void ApplyCameraImmediate(float targetDistance)
+        {
+            _cameraLerpCts?.Cancel();
+
+            if (_thirdPersonFollow == null)
+                return;
+
+            _thirdPersonFollow.CameraDistance = targetDistance;
+            var offset = _thirdPersonFollow.ShoulderOffset;
+            offset.x = GameDefine.DefaultCameraShoulderOffsetX;
+            _thirdPersonFollow.ShoulderOffset = offset;
+        }
+
+        private async UniTaskVoid ApplyCameraLerp(float targetDistance)
         {
             _cameraLerpCts?.Cancel();
             _cameraLerpCts = new CancellationTokenSource();
@@ -113,13 +130,15 @@ namespace InGame.Component.Module
 
                     _thirdPersonFollow.CameraDistance = Mathf.Lerp(startDistance, targetDistance, t);
                     var offset = _thirdPersonFollow.ShoulderOffset;
-                    offset.x = Mathf.Lerp(startShoulderX, targetShoulderX, t);
+                    offset.x = Mathf.Lerp(startShoulderX, GameDefine.DefaultCameraShoulderOffsetX, t);
                     _thirdPersonFollow.ShoulderOffset = offset;
 
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException)
+            {
+            }
         }
 
         private void OnDestroy()

@@ -15,6 +15,7 @@ namespace Common
     {
         private readonly List<IUpdateable> _updateables = new ();
         private readonly List<IFixedUpdateable> _fixedUpdateables = new ();
+        private readonly List<ILateUpdateable> _lateUpdateables = new ();
         
         public SceneLoader SceneLoader { get; private set; }
         public TableManager TableManager { get; private set; }
@@ -63,6 +64,14 @@ namespace Common
                 _fixedUpdateables[i].OnFixedUpdate();
             }
         }
+
+        private void LateUpdate()
+        {
+            for (int i = _lateUpdateables.Count - 1; i >= 0; i--)
+            {
+                _lateUpdateables[i].OnLateUpdate();
+            }
+        }
         #endregion
 
         #region Bind Events
@@ -70,6 +79,8 @@ namespace Common
         public void UnBindUpdate(IUpdateable updateable) => _updateables.Remove(updateable);
         public void BindFixedUpdate(IFixedUpdateable updateable) => _fixedUpdateables.Add(updateable);
         public void UnBindFixedUpdate(IFixedUpdateable updateable) => _fixedUpdateables.Remove(updateable);
+        public void BindLateUpdate(ILateUpdateable updateable) => _lateUpdateables.Add(updateable);
+        public void UnBindLateUpdate(ILateUpdateable updateable) => _lateUpdateables.Remove(updateable);
         #endregion
     }
 }

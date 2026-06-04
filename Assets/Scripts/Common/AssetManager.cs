@@ -53,7 +53,8 @@ namespace Common
             AnimationClip,
             AvatarMask,
             BlendTree,
-            WeaponAnimationClip
+            WeaponAnimationClip,
+            WeaponBlendTree
         }
 
         private const string Model = "Assets/AddressableAssets/Prefab/Model/";
@@ -61,6 +62,7 @@ namespace Common
         private const string AvatarMask = "Assets/AddressableAssets/AvatarMask/";
         private const string BlendTree = "Assets/AddressableAssets/BlendTree/";
         private const string WeaponAnimationClip = "Assets/AddressableAssets/AnimationClip/Weapon/";
+        private const string WeaponBlendTree = "Assets/AddressableAssets/BlendTree/Weapon/";
 
         public static string GetAddressableKey(LoadTarget target, string assetName)
         {
@@ -81,6 +83,9 @@ namespace Common
                     break;
                 case LoadTarget.WeaponAnimationClip:
                     key = WeaponAnimationClip + assetName + ".anim";
+                    break;
+                case LoadTarget.WeaponBlendTree:
+                    key = WeaponBlendTree + assetName + ".controller";
                     break;
                 default:
                     key = string.Empty;

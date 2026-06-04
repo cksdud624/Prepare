@@ -9,4 +9,9 @@ namespace Common.Template.Interface
     {
         void OnFixedUpdate();
     }
+
+    public interface ILateUpdateable
+    {
+        void OnLateUpdate();
+    }
 }

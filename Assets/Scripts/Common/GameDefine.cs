@@ -40,20 +40,18 @@ namespace Common
         public const float DefaultCrossFadeDuration = 0.1f;
         public enum AnimationType
         {
-            //점프 애니메이션
             Jump,
             Land,
-            //조준 점프 애니메이션
+            Fly,
             AimJump,
             AimLand,
+            AimFly,
         }
 
         public enum BlendTreeType
         {
             Move1D,
             AimMove2D,
-            Fly1D,
-            AimFly1D,
         }
 
         public enum AvatarMaskType
@@ -64,8 +62,13 @@ namespace Common
         
         public enum WeaponAnimationType
         {
-            Idle,
-            Aim
+            Air,
+            Aim,
+        }
+
+        public enum WeaponBlendTreeType
+        {
+            Move1D
         }
         
         #endregion
@@ -73,7 +76,8 @@ namespace Common
         #region Combat
         public enum CombatCommandType
         {
-            Idle,
+            Move,
+            Air,
             Aim
         }
 
@@ -94,9 +98,9 @@ namespace Common
         {
             Move,
             Jump,
+            Fly,
             AimMove,
             AimJump,
-            Fly,
             AimFly,
         }
 
@@ -113,8 +117,8 @@ namespace Common
         #region Rotation
 
         public const float DefaultCameraDistance = 3f;
+        public const float DefaultCameraShoulderOffsetX = 0.5f;
         public const float DefaultZoomCameraDistance = 2f;
-        public const float DefaultZoomCameraShoulderOffsetX = 0.5f;
         public const float DefaultCameraLerpTime = 0.1f;
         public const float DefaultEntryRotationTime = 0.1f;
         public const float DefaultRotationSpeed = 10f;

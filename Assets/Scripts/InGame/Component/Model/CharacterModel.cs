@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Common;
 using Generated.Table;
 using UniRx;
@@ -40,10 +40,10 @@ namespace InGame.Component.Model
         #endregion
         
         #region Move
-        public readonly ReactiveProperty<bool> IsRun = new ();
+        public readonly ReactiveProperty<bool> IsSprint = new ();
         public readonly ReactiveProperty<Vector2> MoveDirection = new ();
         public readonly ReactiveProperty<bool> IsLand = new ();
-        public readonly ReactiveProperty<bool> IsFlyHolding = new();
+        public readonly ReactiveProperty<bool> IsSpaceHolding = new();
 
         #endregion
     }

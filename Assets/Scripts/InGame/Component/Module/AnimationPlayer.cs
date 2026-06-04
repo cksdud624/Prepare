@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Common;
+using Common.Template.Interface;
 using InGame.Component.Model;
 using InGame.Model;
 using Newtonsoft.Json.Serialization;
@@ -14,11 +15,12 @@ using BlendTreeType = Common.GameDefine.BlendTreeType;
 using AvatarMaskType = Common.GameDefine.AvatarMaskType;
 using WeaponType = Common.GameDefine.WeaponType;
 using WeaponAnimationType = Common.GameDefine.WeaponAnimationType;
+using WeaponBlendTreeType = Common.GameDefine.WeaponBlendTreeType;
 using LoadTarget = Common.AssetKeys.LoadTarget;
 
 namespace InGame.Component.Module
 {
-    public class AnimationPlayer : MonoBehaviour
+    public class AnimationPlayer : MonoBehaviour, ILateUpdateable
     {
         private class LayerState
         {
@@ -28,6 +30,7 @@ namespace InGame.Component.Module
             public AnimationMixerPlayable Mixer;
             public List<Playable> Ports = new (PortCapacity) { default, default };
             public CancellationTokenSource CrossFadeCancelToken;
+            public CancellationTokenSource ParameterCancelToken;
             public int PreviousPort => 1 - TargetPort;
         }
         
@@ -39,18 +42,22 @@ namespace InGame.Component.Module
         private readonly HashSet<AnimationType> _customAnimationType = new();
         private readonly HashSet<BlendTreeType> _customBlendTreeType = new();
         private readonly HashSet<(WeaponType, WeaponAnimationType)> _customWeaponAnimationType = new();
-        
+        private readonly HashSet<(WeaponType, WeaponBlendTreeType)> _customWeaponBlendTreeType = new();
+
         //애니메이션 데이터 캐싱
         private readonly Dictionary<AnimationType, AnimationClip> _animationClips = new();
         private readonly Dictionary<BlendTreeType, RuntimeAnimatorController> _blendTrees = new();
         private readonly Dictionary<(WeaponType, WeaponAnimationType), AnimationClip> _weaponAnimationClips = new();
+        private readonly Dictionary<(WeaponType, WeaponBlendTreeType), RuntimeAnimatorController> _weaponBlendTrees = new();
         
         private readonly Dictionary<AvatarMaskType, LayerState> _layerStates = new();
         
         private PlayableGraph _graph;
         private AnimationLayerMixerPlayable _layerMixer;
         private CancellationTokenSource _layerCancelToken;
-        private CancellationTokenSource _parameterCancelToken;
+
+        private bool _isAimIKEnabled;
+        private Transform _aimPivot;
         
         
         public async UniTask Init(InGameModel inGameModel, Animator animator, CharacterModel characterModel)
@@ -101,6 +108,15 @@ namespace InGame.Component.Module
                     if (clip != null) _weaponAnimationClips[(weaponType, animType)] = clip;
                     else Debug.LogError("AnimationClip not found: " + key);
                 }
+
+                foreach (WeaponBlendTreeType blendTreeType in Enum.GetValues(typeof(WeaponBlendTreeType)))
+                {
+                    key = _customWeaponBlendTreeType.Contains((weaponType, blendTreeType))
+                        ? $"{weaponData.Id}_{blendTreeType}" : $"default_{weaponType}_{blendTreeType}";
+                    var tree = await assetManager.LoadAssetAsync<RuntimeAnimatorController>(LoadTarget.WeaponBlendTree, key);
+                    if (tree != null) _weaponBlendTrees[(weaponType, blendTreeType)] = tree;
+                    else Debug.LogError("WeaponBlendTree not found: " + key);
+                }
             }
 
             _graph = PlayableGraph.Create($"AnimationPlayer_{gameObject.name}");
@@ -133,6 +149,7 @@ namespace InGame.Component.Module
             }
 
             _graph.Play();
+            Global.Instance.BindLateUpdate(this);
         }
 
         public void PlayAnimation(AnimationType type, AvatarMaskType maskType, float? playDuration = null)
@@ -185,12 +202,27 @@ namespace InGame.Component.Module
             CrossFadeAnimation(_layerStates[maskType], blendTreePlayable).Forget();
         }
 
+        public void PlayBlendTree(WeaponType weaponType, WeaponBlendTreeType type, AvatarMaskType maskType)
+        {
+            if (!_weaponBlendTrees.TryGetValue((weaponType, type), out var blendTree))
+            {
+                Debug.LogError($"WeaponBlendTree not found: {weaponType}_{type}");
+                return;
+            }
+
+            var blendTreePlayable = AnimatorControllerPlayable.Create(_graph, blendTree);
+            CrossFadeAnimation(_layerStates[maskType], blendTreePlayable).Forget();
+
+            if (maskType == AvatarMaskType.Upper)
+                CrossFadeLayer((int)maskType, 1).Forget();
+        }
+
         public void SetParameter(AvatarMaskType maskType, float value, bool isLerp = true, float lerpDuration = 0.1f)
         {
             if (!TryGetControllerPlayable(maskType, out var playable)) return;
 
             if (isLerp)
-                LerpParameter(playable, value, lerpDuration).Forget();
+                LerpParameter(_layerStates[maskType], playable, value, lerpDuration).Forget();
             else
                 playable.SetFloat(GameDefine.Parameter1, value);
         }
@@ -200,7 +232,7 @@ namespace InGame.Component.Module
             if (!TryGetControllerPlayable(maskType, out var playable)) return;
 
             if (isLerp)
-                LerpParameter(playable, value).Forget();
+                LerpParameter(_layerStates[maskType], playable, value).Forget();
             else
             {
                 playable.SetFloat(GameDefine.Parameter1, value.x);
@@ -221,10 +253,10 @@ namespace InGame.Component.Module
             return false;
         }
 
-        private async UniTask LerpParameter(AnimatorControllerPlayable controllerPlayable, float value, float lerpDuration)
+        private async UniTask LerpParameter(LayerState layerState, AnimatorControllerPlayable controllerPlayable, float value, float lerpDuration)
         {
-            _parameterCancelToken?.Cancel();
-            _parameterCancelToken = new CancellationTokenSource();
+            layerState.ParameterCancelToken?.Cancel();
+            layerState.ParameterCancelToken = new CancellationTokenSource();
             if (lerpDuration <= 0f)
             {
                 controllerPlayable.SetFloat(GameDefine.Parameter1, value);
@@ -239,7 +271,7 @@ namespace InGame.Component.Module
                 {
                     elapsed += Time.deltaTime;
                     controllerPlayable.SetFloat(GameDefine.Parameter1, Mathf.Lerp(start, value, Mathf.Clamp01(elapsed / lerpDuration)));
-                    await UniTask.Yield(PlayerLoopTiming.Update, _parameterCancelToken.Token);
+                    await UniTask.Yield(PlayerLoopTiming.Update, layerState.ParameterCancelToken.Token);
                 }
                 controllerPlayable.SetFloat(GameDefine.Parameter1, value);
             }
@@ -248,10 +280,10 @@ namespace InGame.Component.Module
             }
         }
 
-        private async UniTask LerpParameter(AnimatorControllerPlayable controllerPlayable, Vector2 value, float lerpDuration = 0.1f)
+        private async UniTask LerpParameter(LayerState layerState, AnimatorControllerPlayable controllerPlayable, Vector2 value, float lerpDuration = 0.1f)
         {
-            _parameterCancelToken?.Cancel();
-            _parameterCancelToken = new CancellationTokenSource();
+            layerState.ParameterCancelToken?.Cancel();
+            layerState.ParameterCancelToken = new CancellationTokenSource();
             if (lerpDuration <= 0f)
             {
                 controllerPlayable.SetFloat(GameDefine.Parameter1, value.x);
@@ -270,7 +302,7 @@ namespace InGame.Component.Module
                     float t = Mathf.Clamp01(elapsed / lerpDuration);
                     controllerPlayable.SetFloat(GameDefine.Parameter1, Mathf.Lerp(start1, value.x, t));
                     controllerPlayable.SetFloat(GameDefine.Parameter2, Mathf.Lerp(start2, value.y, t));
-                    await UniTask.Yield(PlayerLoopTiming.Update, _parameterCancelToken.Token);
+                    await UniTask.Yield(PlayerLoopTiming.Update, layerState.ParameterCancelToken.Token);
                 }
                 controllerPlayable.SetFloat(GameDefine.Parameter1, value.x);
                 controllerPlayable.SetFloat(GameDefine.Parameter2, value.y);
@@ -278,6 +310,28 @@ namespace InGame.Component.Module
             catch (OperationCanceledException)
             {
             }
+        }
+
+        public void SetAimIK(bool enable, Transform aimPivot = null)
+        {
+            _isAimIKEnabled = enable;
+            _aimPivot = aimPivot;
+        }
+
+        public void OnLateUpdate()
+        {
+            if (!_isAimIKEnabled || _aimPivot == null) return;
+
+            var aimForward = _aimPivot.forward;
+            var modelRight = _animator.transform.right;
+            var horizontalForward = Vector3.ProjectOnPlane(aimForward, Vector3.up).normalized;
+            float pitch = Vector3.SignedAngle(horizontalForward, aimForward, modelRight);
+
+            var spine = _animator.GetBoneTransform(HumanBodyBones.Spine);
+            var chest = _animator.GetBoneTransform(HumanBodyBones.Chest);
+
+            spine?.Rotate(modelRight, pitch * 0.5f, Space.World);
+            chest?.Rotate(modelRight, pitch * 0.5f, Space.World);
         }
 
         public void StopAnimation(AvatarMaskType maskType)
@@ -296,7 +350,7 @@ namespace InGame.Component.Module
         {
             var state = _layerStates[AvatarMaskType.Upper];
             state.CrossFadeCancelToken?.Cancel();
-            _parameterCancelToken?.Cancel();
+            state.ParameterCancelToken?.Cancel();
 
             for (int i = 0; i < state.Ports.Count; i++)
             {
@@ -317,7 +371,7 @@ namespace InGame.Component.Module
         {
             state.CrossFadeCancelToken?.Cancel();
             state.CrossFadeCancelToken = new CancellationTokenSource();
-            _parameterCancelToken?.Cancel();
+            state.ParameterCancelToken?.Cancel();
 
             int previousPort = state.PreviousPort;
             int targetPort = state.TargetPort;
@@ -387,16 +441,17 @@ namespace InGame.Component.Module
         
         private void OnDestroy()
         {
+            Global.Instance?.UnBindLateUpdate(this);
             if (_graph.IsValid())
                 _graph.Destroy();
 
             foreach (var layerState in _layerStates)
             {
                 layerState.Value.CrossFadeCancelToken?.Cancel();
+                layerState.Value.ParameterCancelToken?.Cancel();
             }
-            
+
             _layerCancelToken?.Cancel();
-            _parameterCancelToken?.Cancel();
 
             var assetManager = Global.Instance?.AssetManager;
             if (assetManager == null) return;
@@ -426,13 +481,18 @@ namespace InGame.Component.Module
             foreach (var weaponData in _characterModel.WeaponStatusDataList)
             {
                 var weaponType = (WeaponType)weaponData.WeaponType;
-                string weaponTypeName = weaponType.ToString();
-                string weaponTypeLower = weaponTypeName.ToLower();
                 foreach (WeaponAnimationType animType in Enum.GetValues(typeof(WeaponAnimationType)))
                 {
-                    string animTypeLower = animType.ToString().ToLower();
-                    key = $"{weaponTypeName}/default_{weaponTypeLower}_{animTypeLower}";
+                    key = _customWeaponAnimationType.Contains((weaponType, animType))
+                        ? $"{weaponData.Id}_{animType}" : $"default_{weaponType}_{animType}";
                     assetManager.ReleaseAsset<AnimationClip>(LoadTarget.WeaponAnimationClip, key);
+                }
+
+                foreach (WeaponBlendTreeType blendTreeType in Enum.GetValues(typeof(WeaponBlendTreeType)))
+                {
+                    key = _customWeaponBlendTreeType.Contains((weaponType, blendTreeType))
+                        ? $"{weaponData.Id}_{blendTreeType}" : $"default_{weaponType}_{blendTreeType}";
+                    assetManager.ReleaseAsset<RuntimeAnimatorController>(LoadTarget.WeaponBlendTree, key);
                 }
             }
         }

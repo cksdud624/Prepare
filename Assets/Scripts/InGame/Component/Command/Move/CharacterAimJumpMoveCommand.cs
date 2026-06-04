@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Common;
 using UnityEngine;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
@@ -19,7 +19,7 @@ namespace InGame.Component.Command
         private Action<IMoveCommand> _onMoveCommandFinished;
         private bool _isLand;
         private Vector2 _moveDirection;
-        private bool _isRun;
+        private bool _isSprint;
         private bool _applyForce = true;
 
         private IDisposable _isLandChangedDisposable;
@@ -53,7 +53,7 @@ namespace InGame.Component.Command
             _isLandChangedDisposable = _componentBank.CharacterModel.IsLand.Subscribe(OnIsLandChanged);
             _moveDirection = _componentBank.CharacterModel.MoveDirection.Value;
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
-            _isRun = _componentBank.CharacterModel.IsRun.Value;
+            _isSprint = _componentBank.CharacterModel.IsSprint.Value;
         }
 
         public void Stay()
@@ -99,7 +99,7 @@ namespace InGame.Component.Command
             var camForward = _componentBank.CameraController.GetForward();
             var camRight = Vector3.Cross(Vector3.up, camForward);
             var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
-            worldDirection *= _isRun ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
+            worldDirection *= _isSprint ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
 
             var currentY = _componentBank.Rigidbody.linearVelocity.y;
             _componentBank.Rigidbody.linearVelocity = new Vector3(worldDirection.x, currentY, worldDirection.z);
@@ -109,6 +109,7 @@ namespace InGame.Component.Command
         {
             _isLandChangedDisposable?.Dispose();
             _moveDirectionDisposable?.Dispose();
+            _onMoveCommandFinished = null;
         }
 
         #region Events

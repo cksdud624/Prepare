@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using Common;
 using Cysharp.Threading.Tasks;
@@ -26,8 +26,6 @@ namespace InGame.Component.Command
 
         private IDisposable _moveDirectionDisposable;
         private Vector2 _moveDirection;
-        private IDisposable _runDisposable;
-        private bool _isRun;
         private IDisposable _isLandDisposable;
         private bool _isLand;
         private float _fallingElapsed;
@@ -39,8 +37,6 @@ namespace InGame.Component.Command
             _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.AimMove2D, AvatarMaskType.Base);
             _moveDirection = _componentBank.CharacterModel.MoveDirection.Value;
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
-            _isRun = _componentBank.CharacterModel.IsRun.Value;
-            _runDisposable = _componentBank.CharacterModel.IsRun.Subscribe(OnRunChanged);
             _isLand = _componentBank.CharacterModel.IsLand.Value;
             _isLandDisposable = _componentBank.CharacterModel.IsLand.Subscribe(v => _isLand = v);
             SetAnimationParameter(false);
@@ -73,7 +69,7 @@ namespace InGame.Component.Command
             var camForward = _componentBank.CameraController.GetForward();
             var camRight = Vector3.Cross(Vector3.up, camForward);
             var worldDirection = camForward * _moveDirection.y + camRight * _moveDirection.x;
-            worldDirection *= _isRun ? GameDefine.DefaultRunSpeed : GameDefine.DefaultMoveSpeed;
+            worldDirection *= GameDefine.DefaultMoveSpeed;
             _componentBank.Rigidbody.linearVelocity = new Vector3(
                 worldDirection.x,
                 _componentBank.Rigidbody.linearVelocity.y,
@@ -84,7 +80,6 @@ namespace InGame.Component.Command
         public void Exit()
         {
             _moveDirectionDisposable?.Dispose();
-            _runDisposable?.Dispose();
             _isLandDisposable?.Dispose();
             _entryCancelToken?.Cancel();
             _onMoveCommandFinished = null;
@@ -97,13 +92,6 @@ namespace InGame.Component.Command
             _moveDirection = direction;
 
             if (isZero != (_moveDirection == Vector2.zero))
-                SetAnimationParameter();
-        }
-
-        private void OnRunChanged(bool isRun)
-        {
-            _isRun = isRun;
-            if(_moveDirection != Vector2.zero)
                 SetAnimationParameter();
         }
 
@@ -146,8 +134,7 @@ namespace InGame.Component.Command
 
         private void SetAnimationParameter(bool isLerp = true)
         {
-            float balancer = _isRun ? 1f : 0.5f;
-            _componentBank.AnimationPlayer.SetParameter(AvatarMaskType.Base, _moveDirection.normalized * balancer, isLerp);
+            _componentBank.AnimationPlayer.SetParameter(AvatarMaskType.Base, _moveDirection.normalized, isLerp);
         }
     }
 }

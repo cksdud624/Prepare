@@ -51,7 +51,7 @@ namespace InGame.Object
 
         public void DetachController() => Destroy(Controller);
 
-        public void AttachCamera(CinemachineCamera targetCamera) => ComponentBank.CameraController.AttachCamera(targetCamera);
+        public void AttachCamera(CinemachineCamera targetCamera, bool isLerp = false) => ComponentBank.CameraController.AttachCamera(targetCamera, isLerp);
 
         public void DetachCamera() => ComponentBank.CameraController.DetachCamera();
     }
