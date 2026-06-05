@@ -58,6 +58,9 @@ namespace InGame.Component.Module
 
         private bool _isAimIKEnabled;
         private Transform _aimPivot;
+        private float _upperBodyYOffset;
+        private float _upperBodyYOffsetTarget;
+        private CancellationTokenSource _upperBodyOffsetCts;
         
         
         public async UniTask Init(InGameModel inGameModel, Animator animator, CharacterModel characterModel)
@@ -148,6 +151,7 @@ namespace InGame.Component.Module
                 _layerStates.Add(type, state);
             }
 
+            _animator.applyRootMotion = false;
             _graph.Play();
             Global.Instance.BindLateUpdate(this);
         }
@@ -318,20 +322,57 @@ namespace InGame.Component.Module
             _aimPivot = aimPivot;
         }
 
+        public void SetUpperBodyOffset(float yOffset, bool isLerp = true, float lerpDuration = 0.1f)
+        {
+            _upperBodyYOffsetTarget = yOffset;
+            _upperBodyOffsetCts?.Cancel();
+            if (!isLerp)
+            {
+                _upperBodyYOffset = yOffset;
+                return;
+            }
+            _upperBodyOffsetCts = new CancellationTokenSource();
+            LerpUpperBodyOffset(yOffset, lerpDuration, _upperBodyOffsetCts.Token).Forget();
+        }
+
+        private async UniTaskVoid LerpUpperBodyOffset(float target, float duration, CancellationToken token)
+        {
+            float start = _upperBodyYOffset;
+            float elapsed = 0f;
+            try
+            {
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    _upperBodyYOffset = Mathf.Lerp(start, target, Mathf.Clamp01(elapsed / duration));
+                    await UniTask.Yield(PlayerLoopTiming.Update, token);
+                }
+                _upperBodyYOffset = target;
+            }
+            catch (OperationCanceledException) { }
+        }
+        
         public void OnLateUpdate()
         {
-            if (!_isAimIKEnabled || _aimPivot == null) return;
+            if (_isAimIKEnabled && _aimPivot != null)
+            {
+                var aimForward = _aimPivot.forward;
+                var modelRight = _animator.transform.right;
+                var horizontalForward = Vector3.ProjectOnPlane(aimForward, Vector3.up).normalized;
+                float pitch = Vector3.SignedAngle(horizontalForward, aimForward, modelRight);
 
-            var aimForward = _aimPivot.forward;
-            var modelRight = _animator.transform.right;
-            var horizontalForward = Vector3.ProjectOnPlane(aimForward, Vector3.up).normalized;
-            float pitch = Vector3.SignedAngle(horizontalForward, aimForward, modelRight);
+                var spine = _animator.GetBoneTransform(HumanBodyBones.Spine);
+                var chest = _animator.GetBoneTransform(HumanBodyBones.Chest);
 
-            var spine = _animator.GetBoneTransform(HumanBodyBones.Spine);
-            var chest = _animator.GetBoneTransform(HumanBodyBones.Chest);
+                spine?.Rotate(modelRight, pitch * 0.5f, Space.World);
+                chest?.Rotate(modelRight, pitch * 0.5f, Space.World);
+            }
 
-            spine?.Rotate(modelRight, pitch * 0.5f, Space.World);
-            chest?.Rotate(modelRight, pitch * 0.5f, Space.World);
+            if (_upperBodyYOffset != 0f)
+            {
+                var spine = _animator.GetBoneTransform(HumanBodyBones.Spine);
+                spine?.Rotate(Vector3.up, _upperBodyYOffset, Space.World);
+            }
         }
 
         public void StopAnimation(AvatarMaskType maskType)
@@ -452,6 +493,7 @@ namespace InGame.Component.Module
             }
 
             _layerCancelToken?.Cancel();
+            _upperBodyOffsetCts?.Cancel();
 
             var assetManager = Global.Instance?.AssetManager;
             if (assetManager == null) return;

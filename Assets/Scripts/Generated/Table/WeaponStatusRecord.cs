@@ -46,7 +46,9 @@ namespace Generated.Table
 		public int WeaponType {get; private set;}
 		public string Name {get; private set;}
 		public string Description {get; private set;}
-		public float AttackSpeed {get; private set;}
+		public int Ammo {get; private set;}
+		public int Speed {get; private set;}
+		public int RecoveryTime {get; private set;}
 		public List<string> CustomWeaponAnimation {get; private set;}
 
 		public WeaponStatusData(BinaryReader reader)
@@ -56,10 +58,12 @@ namespace Generated.Table
 			WeaponType = int.TryParse(tableDatas[1], out int vInt1) ? vInt1 : 0;
 			Name = tableDatas[2];
 			Description = tableDatas[3];
-			AttackSpeed = float.TryParse(tableDatas[4], out float vFloat4) ? vFloat4 : 0f;
+			Ammo = int.TryParse(tableDatas[4], out int vInt4) ? vInt4 : 0;
+			Speed = int.TryParse(tableDatas[5], out int vInt5) ? vInt5 : 0;
+			RecoveryTime = int.TryParse(tableDatas[6], out int vInt6) ? vInt6 : 0;
 			CustomWeaponAnimation = new ();
-			string[] items5 = tableDatas[5].Split(',');
-			foreach (var item in items5)
+			string[] items7 = tableDatas[7].Split(',');
+			foreach (var item in items7)
 			{
 				CustomWeaponAnimation.Add(item);
 			}

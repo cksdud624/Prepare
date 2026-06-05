@@ -5,8 +5,9 @@ using Cysharp.Threading.Tasks;
 using UniRx;
 using UnityEngine;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
-using BlendTreeType = Common.GameDefine.BlendTreeType;
 using AvatarMaskType = Common.GameDefine.AvatarMaskType;
+using WeaponType = Common.GameDefine.WeaponType;
+using WeaponBlendTreeType = Common.GameDefine.WeaponBlendTreeType;
 
 namespace InGame.Component.Command
 {
@@ -34,7 +35,8 @@ namespace InGame.Component.Command
         
         public void Entry()
         {
-            _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.AimMove2D, AvatarMaskType.Base);
+            var weaponType = (WeaponType)_componentBank.CharacterModel.CurrentWeapon.WeaponType;
+            _componentBank.AnimationPlayer.PlayBlendTree(weaponType, WeaponBlendTreeType.AimMove2D, AvatarMaskType.Base);
             _moveDirection = _componentBank.CharacterModel.MoveDirection.Value;
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
             _isLand = _componentBank.CharacterModel.IsLand.Value;
@@ -83,6 +85,7 @@ namespace InGame.Component.Command
             _isLandDisposable?.Dispose();
             _entryCancelToken?.Cancel();
             _onMoveCommandFinished = null;
+            _componentBank.AnimationPlayer.SetUpperBodyOffset(0);
         }
 
         #region Events
@@ -134,7 +137,15 @@ namespace InGame.Component.Command
 
         private void SetAnimationParameter(bool isLerp = true)
         {
-            _componentBank.AnimationPlayer.SetParameter(AvatarMaskType.Base, _moveDirection.normalized, isLerp);
+            var param = new Vector2(
+                _moveDirection.x > 0f ? 1f : _moveDirection.x < 0f ? -1f : 0f,
+                _moveDirection.y > 0f ? 1f : _moveDirection.y < 0f ? -1f : 0f
+            );
+            if(_moveDirection == new Vector2(0f, 1f))
+                _componentBank.AnimationPlayer.SetUpperBodyOffset(20);
+            else
+                _componentBank.AnimationPlayer.SetUpperBodyOffset(0);
+            _componentBank.AnimationPlayer.SetParameter(AvatarMaskType.Base, param, isLerp);
         }
     }
 }

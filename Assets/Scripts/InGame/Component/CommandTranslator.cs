@@ -57,18 +57,7 @@ namespace InGame.Component
 
         private void OnRightClick(bool isClick)
         {
-            if (!isClick)
-                return;
-            
-            switch (_componentBank.CharacterModel.CombatState.Value)
-            {
-                case CombatState.Standard:
-                    ChangeCombatState(CombatState.Aim);
-                    break;
-                case CombatState.Aim:
-                    ChangeCombatState(CombatState.Standard);
-                    break;
-            }
+            ChangeCombatState(isClick ? CombatState.Aim : CombatState.Standard);
         }
 
         private void OnShiftClick(bool isClick)
@@ -129,7 +118,6 @@ namespace InGame.Component
                         break;
                 }
             }
-
         }
 
         public void OnUpdate()

@@ -48,11 +48,7 @@ namespace Common
             AimFly,
         }
 
-        public enum BlendTreeType
-        {
-            Move1D,
-            AimMove2D,
-        }
+        public enum BlendTreeType { }
 
         public enum AvatarMaskType
         {
@@ -68,7 +64,8 @@ namespace Common
 
         public enum WeaponBlendTreeType
         {
-            Move1D
+            Move1D,
+            AimMove2D,
         }
         
         #endregion

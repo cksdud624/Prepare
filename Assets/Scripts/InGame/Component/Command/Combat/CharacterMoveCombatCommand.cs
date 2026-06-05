@@ -14,14 +14,17 @@ namespace InGame.Component.Command
         public CombatCommandGroup? CombatCommandsGroup { get; } = CombatCommandGroup.Handle;
         private ComponentBank _componentBank;
 
+        private Action<ICombatCommand> _onFinished;
         private IDisposable _moveDirectionDisposable;
         private Vector2 _moveDirection;
         private IDisposable _sprintDisposable;
         private bool _isSprint;
+        private IDisposable _isLandDisposable;
 
         public void Init(Action<ICombatCommand> onFinished, ICombatCommand transfer, ComponentBank componentBank)
         {
             _componentBank = componentBank;
+            _onFinished = onFinished;
         }
 
         public void Entry()
@@ -33,6 +36,7 @@ namespace InGame.Component.Command
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
             _isSprint = _componentBank.CharacterModel.IsSprint.Value;
             _sprintDisposable = _componentBank.CharacterModel.IsSprint.Subscribe(OnSprintChanged);
+            _isLandDisposable = _componentBank.CharacterModel.IsLand.Subscribe(OnIsLandChanged);
             SetAnimationParameter();
         }
 
@@ -44,6 +48,8 @@ namespace InGame.Component.Command
         {
             _moveDirectionDisposable?.Dispose();
             _sprintDisposable?.Dispose();
+            _isLandDisposable?.Dispose();
+            _onFinished = null;
         }
 
         private void OnMoveDirectionChanged(Vector2 direction)
@@ -59,6 +65,12 @@ namespace InGame.Component.Command
             _isSprint = isSprint;
             if (_moveDirection != Vector2.zero)
                 SetAnimationParameter();
+        }
+
+        private void OnIsLandChanged(bool isLand)
+        {
+            if(!isLand)
+                _onFinished?.Invoke(this);
         }
 
         private void SetAnimationParameter(bool isLerp = true)

@@ -3,8 +3,9 @@ using Common;
 using UniRx;
 using UnityEngine;
 using MoveCommandType = Common.GameDefine.MoveCommandType;
-using BlendTreeType = Common.GameDefine.BlendTreeType;
 using AvatarMaskType = Common.GameDefine.AvatarMaskType;
+using WeaponType = Common.GameDefine.WeaponType;
+using WeaponBlendTreeType = Common.GameDefine.WeaponBlendTreeType;
 
 namespace InGame.Component.Command
 {
@@ -32,7 +33,8 @@ namespace InGame.Component.Command
         
         public void Entry()
         {
-            _componentBank.AnimationPlayer.PlayBlendTree(BlendTreeType.Move1D, AvatarMaskType.Base);
+            var weaponType = (WeaponType)_componentBank.CharacterModel.CurrentWeapon.WeaponType;
+            _componentBank.AnimationPlayer.PlayBlendTree(weaponType, WeaponBlendTreeType.Move1D, AvatarMaskType.Base);
             _moveDirection = _componentBank.CharacterModel.MoveDirection.Value;
             _moveDirectionDisposable = _componentBank.CharacterModel.MoveDirection.Subscribe(OnMoveDirectionChanged);
             _isSprint = _componentBank.CharacterModel.IsSprint.Value;

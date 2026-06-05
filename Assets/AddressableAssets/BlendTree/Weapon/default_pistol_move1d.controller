@@ -9,7 +9,7 @@ BlendTree:
   m_Name: Blend Tree
   m_Childs:
   - serializedVersion: 2
-    m_Motion: {fileID: 7400000, guid: f5aff30ea4d8dab41abe91b481bc0635, type: 2}
+    m_Motion: {fileID: 7400000, guid: e5615532e6cdd734e955b208a7c93f86, type: 2}
     m_Threshold: 0
     m_Position: {x: 0, y: 0}
     m_TimeScale: 1
@@ -89,7 +89,7 @@ AnimatorController:
     m_IKPass: 0
     m_SyncedLayerAffectsTiming: 0
     m_Controller: {fileID: 9100000}
-  m_EvaluateTransitionsOnStart: 1
+  m_EvaluateTransitionsOnStart: 0
 --- !u!1102 &1053811706517236078
 AnimatorState:
   serializedVersion: 6
